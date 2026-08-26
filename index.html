@@ -227,6 +227,7 @@
           <button class="th-pill" onclick="setTHSensor('mclimate-ht2',this)">HT2</button>
           <button class="th-pill" onclick="setTHSensor('mclimate-ht3',this)">HT3</button>
           <button class="th-pill" onclick="setTHSensor('mclimate-ht4',this)">HT4</button>
+          <button class="th-pill" onclick="setTHSensor('am307',this)">AM307</button>
         </div>
         <div class="legend">
           <div class="legend-item"><span class="legend-swatch" style="background:#0e9f8e"></span>Temperature (°C)</div>
@@ -244,11 +245,17 @@
     <div class="card-grid-2">
       <div class="card">
         <div class="card-head">
-          <div><div class="card-title">Power consumption</div><div class="card-sub">Netvox R809 — cumulative energy draw</div></div>
+          <div><div class="card-title">Power consumption</div><div class="card-sub" id="pw-sub">Netvox R809 — cumulative energy draw</div></div>
           <div class="range-toggle">
             <button class="range-btn active" onclick="setRange('energy',24,this)">24h</button>
             <button class="range-btn" onclick="setRange('energy',48,this)">48h</button>
           </div>
+        </div>
+        <div class="th-selector">
+          <button class="th-pill active" onclick="setPowerSensor('netvox-r809',this)">R809 energy</button>
+          <button class="th-pill" onclick="setPowerSensor('ct101-1',this)">CT101-1</button>
+          <button class="th-pill" onclick="setPowerSensor('ct101-2',this)">CT101-2</button>
+          <button class="th-pill" onclick="setPowerSensor('netvox-r718n17',this)">R718N17</button>
         </div>
         <div id="energy-chart"></div>
       </div>
@@ -544,6 +551,7 @@ function setTHSensor(mode, el){
   const sub = document.getElementById('th-sub');
   if (sub) sub.textContent = mode==='avg' ? 'MClimate sensors — fleet average'
                           : mode==='all' ? 'MClimate sensors — all four'
+                          : mode==='am307' ? 'AM307 — air quality sensor'
                           : 'MClimate sensor — ' + mode.replace('mclimate-','').toUpperCase();
   drawTHChart();
 }
@@ -575,7 +583,8 @@ function drawTHChart(){
   } else {
     lines = [{
       id:thSensor, color:'#0e9f8e',
-      data: thSeries(thSensor,cut).map(d=>({time:d.time, t:d.sensorTemperature, h:d.relativeHumidity}))
+      data: thSeries(thSensor,cut).map(d=>({time:d.time, t:(d.sensorTemperature!==undefined?d.sensorTemperature:d.temperature), h:(d.relativeHumidity!==undefined?d.relativeHumidity:d.humidity)}))
+                                  .filter(d=>d.t!==undefined && d.h!==undefined)
     }];
   }
 
@@ -615,29 +624,61 @@ function drawTHChart(){
   addTip(dots.selectAll('circle'), d=>`${d.t.toFixed(1)} °C · ${d.h.toFixed(0)}%`);
 }
 
+let powerSensor = 'netvox-r809';   // which device the power card shows
+
+function setPowerSensor(id, el){
+  powerSensor = id;
+  el.parentElement.querySelectorAll('.th-pill').forEach(b=>b.classList.remove('active'));
+  el.classList.add('active');
+  const sub = document.getElementById('pw-sub');
+  const subs = {
+    'netvox-r809':'Netvox R809 — cumulative energy draw',
+    'ct101-1':'CT101-1 clamp — line current',
+    'ct101-2':'CT101-2 clamp — line current',
+    'netvox-r718n17':'Netvox R718N17 — measured current'
+  };
+  if (sub) sub.textContent = subs[id];
+  drawEnergyChart();
+}
+
 function drawEnergyChart(){
   const {svg,width,height}=chartBox('energy-chart',230);
-  const m={top:12,right:16,bottom:26,left:52};
+  const m={top:12,right:16,bottom:26,left:54};
   const cut=cutoff(rangeHours.energy);
-  const raw=DEVICES['netvox-r809'].data.filter(d=>d.time>=cut);
-  const e0=raw[0].Energy;
-  const data=raw.map(d=>({time:d.time, value:(d.Energy-e0)/1000})); // kWh since window start
+  const raw=DEVICES[powerSensor].data.filter(d=>d.time>=cut);
+
+  // pick metric + label + unit per device
+  let data, unit, fill;
+  if (powerSensor==='netvox-r809'){
+    const e0 = raw.length? raw[0].Energy : 0;
+    data = raw.map(d=>({time:d.time, value:(d.Energy-e0)/1000}));   // kWh since window start
+    unit='kWh'; fill='#13c4b0';
+  } else {
+    // ct101-1 / ct101-2 / r718n17 all report instantaneous current
+    data = raw.map(d=>({time:d.time, value: d.current!==undefined ? d.current : (d.Current!==undefined ? d.Current : 0)}));
+    unit='A'; fill='#0e9f8e';
+  }
+
+  if(!data.length){ svg.append('text').attr('x',width/2).attr('y',height/2).attr('text-anchor','middle').attr('fill','#a0aec0').attr('font-size','12').text('No readings in range'); return; }
+
   const x=d3.scaleTime().domain(d3.extent(data,d=>d.time)).range([m.left,width-m.right]);
-  const y=d3.scaleLinear().domain([0,d3.max(data,d=>d.value)*1.1||1]).range([height-m.bottom,m.top]);
+  const yMax = d3.max(data,d=>d.value);
+  const yMin = unit==='kWh' ? 0 : Math.max(0, d3.min(data,d=>d.value)-0.3);
+  const y=d3.scaleLinear().domain([yMin, (yMax*1.1)||1]).range([height-m.bottom,m.top]);
   const fmt=rangeHours.energy<=24?d3.timeFormat('%H:%M'):d3.timeFormat('%d %b');
   svg.append('g').attr('class','grid').attr('transform',`translate(${m.left},0)`).call(d3.axisLeft(y).ticks(4).tickSize(-(width-m.left-m.right)).tickFormat(''));
   svg.append('g').attr('class','axis').attr('transform',`translate(0,${height-m.bottom})`).call(d3.axisBottom(x).ticks(6).tickFormat(fmt));
-  svg.append('g').attr('class','axis').attr('transform',`translate(${m.left},0)`).call(d3.axisLeft(y).ticks(4).tickFormat(d=>d+' kWh'));
+  svg.append('g').attr('class','axis').attr('transform',`translate(${m.left},0)`).call(d3.axisLeft(y).ticks(4).tickFormat(d=> unit==='kWh' ? d+' kWh' : d+' A'));
   const area=d3.area().x(d=>x(d.time)).y0(height-m.bottom).y1(d=>y(d.value)).curve(d3.curveMonotoneX);
   const grad=svg.append('defs').append('linearGradient').attr('id','eg').attr('x1',0).attr('y1',0).attr('x2',0).attr('y2',1);
-  grad.append('stop').attr('offset','0%').attr('stop-color','#13c4b0').attr('stop-opacity',0.28);
-  grad.append('stop').attr('offset','100%').attr('stop-color','#13c4b0').attr('stop-opacity',0);
+  grad.append('stop').attr('offset','0%').attr('stop-color',fill).attr('stop-opacity',0.28);
+  grad.append('stop').attr('offset','100%').attr('stop-color',fill).attr('stop-opacity',0);
   svg.append('path').datum(data).attr('fill','url(#eg)').attr('d',area);
   const line=d3.line().x(d=>x(d.time)).y(d=>y(d.value)).curve(d3.curveMonotoneX);
   svg.append('path').datum(data).attr('fill','none').attr('stroke','#0e9f8e').attr('stroke-width',2).attr('d',line);
   const dots=svg.append('g');
   dots.selectAll('c').data(data.filter((_,i)=>i%3===0)).enter().append('circle').attr('cx',d=>x(d.time)).attr('cy',d=>y(d.value)).attr('r',6).attr('fill','transparent');
-  addTip(dots.selectAll('circle'), d=>`${d.value.toFixed(2)} kWh`);
+  addTip(dots.selectAll('circle'), d=>`${d.value.toFixed(2)} ${unit}`);
 }
 
 function drawWaterChart(){
