@@ -186,7 +186,7 @@
     </nav>
   </div>
   <div class="header-right">
-    <span class="live-tag"><span class="live-dot"></span>Live</span>
+    <span class="live-tag"><span class="live-dot"></span><span id="src-tag">Live</span></span>
     <span class="header-clock" id="clock">—</span>
   </div>
 </header>
@@ -289,11 +289,13 @@
 
 <script>
 /* ══════════════════════════════════════════════════════════════
-   DATA — snapshot generated to match the real TTN payload schemas
-   for Atlantic Energy's 11 devices. Same field names your payload
-   formatters emit (sensorTemperature, Energy, totalVolume, etc.).
-   Swap this block for a live Azure fetch post-signature.
+   LIVE DATA — reads real readings from the Azure Function (GetReadings),
+   which serves the sensor-data blobs. If the fetch fails for any reason,
+   it silently falls back to a generated snapshot so the dashboard can
+   never show a broken screen. Field-name variants are normalised below.
    ══════════════════════════════════════════════════════════════ */
+const API_URL = 'https://aec-ingest-d7ebdah9b6e5e9bf.westeurope-01.azurewebsites.net/api/GetReadings?hours=48';
+
 const NOW = new Date();
 const HOURS = 48, STEP_MIN = 15;
 const STEPS = (HOURS*60)/STEP_MIN;
@@ -314,7 +316,32 @@ function series(builder){
   return arr;
 }
 
-const DEVICES = {
+// device type / kind lookup (used for both live and fallback)
+const DEVICE_META = {
+  'mclimate-ht1':{type:'MClimate HT',kind:'mclimate'}, 'mclimate-ht2':{type:'MClimate HT',kind:'mclimate'},
+  'mclimate-ht3':{type:'MClimate HT',kind:'mclimate'}, 'mclimate-ht4':{type:'MClimate HT',kind:'mclimate'},
+  'netvox-r718n17':{type:'Netvox R718N',kind:'netvox'}, 'netvox-r809':{type:'Netvox R809A',kind:'netvox'},
+  'ct101-1':{type:'CT101 clamp',kind:'ct101'}, 'ct101-2':{type:'CT101 clamp',kind:'ct101'},
+  'cubicmeter':{type:'CubicMeter',kind:'cubicmeter'}, 'am307':{type:'AM307 multi',kind:'am307'},
+  'loadcell':{type:'Load cell LCC01-LB',kind:'loadcell'}
+};
+
+// normalise a raw payload's field-name variants into the canonical names the charts use
+function normalise(p){
+  if (!p) return null;
+  const o = Object.assign({}, p);
+  if (o.temperature!==undefined && o.sensorTemperature===undefined) o.sensorTemperature = o.temperature;
+  if (o.humidity!==undefined    && o.relativeHumidity===undefined)  o.relativeHumidity  = o.humidity;
+  if (o.BatV!==undefined         && o.batteryVoltage===undefined)    o.batteryVoltage    = o.BatV;
+  if (o.Volt!==undefined         && o.batteryVoltage===undefined)    o.batteryVoltage    = o.Volt;
+  // reject the raw fallback shape (undecoded)
+  if (o.raw_frm_payload!==undefined && Object.keys(p).length<=2) return null;
+  return o;
+}
+
+let DEVICES = buildSnapshot();   // starts as snapshot; replaced by live data if the fetch succeeds
+
+function buildSnapshot(){ return {
   'mclimate-ht1': { type:'MClimate HT', kind:'mclimate', data: series((t)=>({ sensorTemperature: jit(curve(t,20.3,1.6),0.2), relativeHumidity: jit(curve(t,61,6),1.2), batteryVoltage: jit(3.5,0.05) })) },
   'mclimate-ht2': { type:'MClimate HT', kind:'mclimate', data: series((t)=>({ sensorTemperature: jit(curve(t,20.7,1.5),0.2), relativeHumidity: jit(curve(t,64,6),1.2), batteryVoltage: jit(3.5,0.05) })) },
   'mclimate-ht3': { type:'MClimate HT', kind:'mclimate', data: series((t)=>({ sensorTemperature: jit(curve(t,20.5,1.7),0.2), relativeHumidity: jit(curve(t,62,6),1.2), batteryVoltage: jit(3.49,0.05) })) },
@@ -326,10 +353,10 @@ const DEVICES = {
   'cubicmeter': { type:'CubicMeter', kind:'cubicmeter', data: series((t,i)=>({ totalVolume: Math.round(421 + (STEPS-i)*0.6), ambientTemperature: jit(curve(t,22.5,0.8),0.15), leakState:0, isSensing:true, errorCode:0, batteryActive: 3536 })) },
   'am307': { type:'AM307 multi', kind:'am307', data: series((t)=>({ co2: Math.round(curve(t,620,220)+jit(0,30)), temperature: jit(curve(t,21.0,1.4),0.2), humidity: jit(curve(t,55,7),1.2), pressure: jit(1013,3) })) },
   'loadcell': { type:'Load cell LCC01-LB', kind:'loadcell', data: series((t)=>({ Weight_Reading: Math.round(curve(t,123000,40000)+jit(0,1500)), BatV: jit(3.58,0.04) })) }
-};
+}; }
 
-// last-seen offsets (mins ago) to mirror the TTN "last activity" column
-const LAST_SEEN = { 'mclimate-ht1':8,'mclimate-ht2':3,'mclimate-ht3':1,'mclimate-ht4':5,'netvox-r718n17':11,'netvox-r809':7,'ct101-1':19,'ct101-2':19,'cubicmeter':28,'am307':6,'loadcell':1 };
+// last-seen offsets (mins ago) — recomputed from live data when available
+let LAST_SEEN = { 'mclimate-ht1':8,'mclimate-ht2':3,'mclimate-ht3':1,'mclimate-ht4':5,'netvox-r718n17':11,'netvox-r809':7,'ct101-1':19,'ct101-2':19,'cubicmeter':28,'am307':6,'loadcell':1 };
 
 /* ── helpers ── */
 const KINDS = [
@@ -469,7 +496,14 @@ function setRange(key, hours, el){
 }
 
 /* ══════ D3 charts (Achill drawChart idiom) ══════ */
-function cutoff(hours){ return new Date(NOW.getTime()-hours*3600000); }
+// cutoff is relative to the NEWEST reading in the data, not wall-clock now —
+// so a freshly-seeded cluster still spreads nicely across the axis.
+function newestTime(){
+  let max = 0;
+  Object.values(DEVICES).forEach(d=>{ if(d.data.length){ const t=d.data[d.data.length-1].time.getTime(); if(t>max) max=t; }});
+  return max || NOW.getTime();
+}
+function cutoff(hours){ return new Date(newestTime()-hours*3600000); }
 function chartBox(containerId, height){
   const container = document.getElementById(containerId);
   container.innerHTML='';
@@ -578,7 +612,53 @@ function drawWeightGauge(){
 
 /* ── init ── */
 function drawAllCharts(){ drawTHChart(); drawEnergyChart(); drawWaterChart(); drawWeightGauge(); }
-buildFilters(); renderKPIs(); renderAlerts(); renderMiniStatus(); renderFullStatus(); renderBatteries(); drawAllCharts();
+/* ── render everything ── */
+function renderAll(){
+  buildFilters(); renderKPIs(); renderAlerts(); renderMiniStatus(); renderFullStatus(); renderBatteries(); drawAllCharts();
+}
+
+/* ── load live data from the Azure Function, fall back to snapshot ── */
+async function loadLive(){
+  try {
+    const res = await fetch(API_URL, { cache:'no-store' });
+    if (!res.ok) throw new Error('HTTP '+res.status);
+    const json = await res.json();
+    const devs = json.devices || {};
+    const built = {};
+    let anyData = false;
+
+    Object.keys(DEVICE_META).forEach(id=>{
+      const meta = DEVICE_META[id];
+      const raw = (devs[id]||[])
+        .map(r=>{ const p = normalise(r.payload); return p ? Object.assign({ time:new Date(r.time) }, p) : null; })
+        .filter(Boolean)
+        .sort((a,b)=>a.time-b.time);
+      built[id] = { type:meta.type, kind:meta.kind, data: raw };
+      if (raw.length) anyData = true;
+    });
+
+    if (!anyData) throw new Error('no decoded readings returned');
+
+    // only replace devices that actually returned data; keep snapshot for any empty ones
+    Object.keys(built).forEach(id=>{ if (built[id].data.length) DEVICES[id] = built[id]; });
+
+    // recompute last-seen (mins ago) from the newest reading per device
+    const now = Date.now();
+    Object.keys(DEVICES).forEach(id=>{
+      const d = DEVICES[id].data;
+      if (d.length) LAST_SEEN[id] = Math.max(0, Math.round((now - d[d.length-1].time.getTime())/60000));
+    });
+
+    document.getElementById('src-tag').textContent = 'Live · Azure';
+  } catch(e){
+    // silent fallback — dashboard already holds the snapshot
+    document.getElementById('src-tag').textContent = 'Live';
+    console.warn('Live fetch failed, using snapshot:', e.message);
+  }
+  renderAll();
+}
+
+loadLive();
 window.addEventListener('resize', ()=>{ clearTimeout(window._rz); window._rz=setTimeout(drawAllCharts,200); });
 </script>
 </body>
