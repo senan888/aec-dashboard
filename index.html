@@ -118,6 +118,15 @@
   .legend-item { display: flex; align-items: center; gap: 6px; font-size: 11px; color: var(--text-mid); }
   .legend-swatch { width: 11px; height: 3px; border-radius: 2px; }
 
+  .th-selector { display: flex; gap: 6px; margin: 12px 0 2px; flex-wrap: wrap; }
+  .th-pill {
+    background: var(--bg); border: 1px solid transparent; border-radius: 6px;
+    font-family: 'IBM Plex Sans', sans-serif; font-size: 11px; font-weight: 500;
+    color: var(--text-soft); padding: 4px 11px; cursor: pointer; transition: all 0.15s;
+  }
+  .th-pill:hover { color: var(--text); }
+  .th-pill.active { background: var(--navy); color: white; }
+
   /* ── D3 axis ── */
   .axis text { font-size: 10px; fill: var(--text-soft); font-family: 'IBM Plex Mono', monospace; }
   .axis path, .axis line { stroke: var(--border); }
@@ -205,11 +214,19 @@
     <div class="card-grid-2">
       <div class="card">
         <div class="card-head">
-          <div><div class="card-title">Temperature &amp; Humidity</div><div class="card-sub">MClimate &amp; AM307 sensors — fleet average</div></div>
+          <div><div class="card-title">Temperature &amp; Humidity</div><div class="card-sub" id="th-sub">MClimate sensors — fleet average</div></div>
           <div class="range-toggle">
             <button class="range-btn active" onclick="setRange('th',24,this)">24h</button>
             <button class="range-btn" onclick="setRange('th',48,this)">48h</button>
           </div>
+        </div>
+        <div class="th-selector">
+          <button class="th-pill active" onclick="setTHSensor('avg',this)">Average</button>
+          <button class="th-pill" onclick="setTHSensor('all',this)">All</button>
+          <button class="th-pill" onclick="setTHSensor('mclimate-ht1',this)">HT1</button>
+          <button class="th-pill" onclick="setTHSensor('mclimate-ht2',this)">HT2</button>
+          <button class="th-pill" onclick="setTHSensor('mclimate-ht3',this)">HT3</button>
+          <button class="th-pill" onclick="setTHSensor('mclimate-ht4',this)">HT4</button>
         </div>
         <div class="legend">
           <div class="legend-item"><span class="legend-swatch" style="background:#0e9f8e"></span>Temperature (°C)</div>
@@ -434,7 +451,7 @@ function renderAlerts(){
 
 /* ── device status tables ── */
 function signalBars(mins){
-  const strength = mins<=5?4 : mins<=12?3 : mins<=20?2 : 1;
+  const strength = mins<=20?4 : mins<=45?3 : mins<=90?2 : 1;
   let s='<span class="signal-bars">';
   for(let i=1;i<=4;i++) s+=`<span class="${i<=strength?'on':''}" style="height:${3+i*2.5}px"></span>`;
   return s+'</span>';
@@ -443,8 +460,8 @@ function mins(m){ return m<60 ? `${m} min ago` : `${Math.floor(m/60)}h ago`; }
 function statusRows(list, full){
   return list.map(([id,d])=>{
     const m = LAST_SEEN[id];
-    const stat = m<=15?'ok':m<=30?'warn':'alert';
-    const statTxt = m<=15?'Online':m<=30?'Delayed':'Quiet';
+    const stat = m<=45?'ok':m<=90?'warn':'alert';
+    const statTxt = m<=45?'Online':m<=90?'Delayed':'Quiet';
     const bat = batteryPct(d);
     return `<tr>
       <td><span class="dev-name">${id}</span>${full?`<br><span class="dev-type">${d.type}</span>`:''}</td>
@@ -516,19 +533,58 @@ function addTip(sel, fmt){
      .on('mouseleave',()=>tooltip.style.opacity=0);
 }
 
+let thSensor = 'avg';   // 'avg' | 'all' | 'mclimate-htN'
+const TH_IDS = ['mclimate-ht1','mclimate-ht2','mclimate-ht3','mclimate-ht4'];
+const TH_COLORS = { 'mclimate-ht1':'#0e9f8e','mclimate-ht2':'#3182ce','mclimate-ht3':'#d69e2e','mclimate-ht4':'#9f7aea' };
+
+function setTHSensor(mode, el){
+  thSensor = mode;
+  el.parentElement.querySelectorAll('.th-pill').forEach(b=>b.classList.remove('active'));
+  el.classList.add('active');
+  const sub = document.getElementById('th-sub');
+  if (sub) sub.textContent = mode==='avg' ? 'MClimate sensors — fleet average'
+                          : mode==='all' ? 'MClimate sensors — all four'
+                          : 'MClimate sensor — ' + mode.replace('mclimate-','').toUpperCase();
+  drawTHChart();
+}
+
+// returns {time, sensorTemperature, relativeHumidity}[] for one device within the cutoff
+function thSeries(id, cut){ return DEVICES[id].data.filter(d=>d.time>=cut); }
+
 function drawTHChart(){
   const {svg,width,height}=chartBox('th-chart',230);
   const m={top:12,right:44,bottom:26,left:38};
   const cut=cutoff(rangeHours.th);
-  // fleet-average temp + humidity from mclimates
-  const mcs=['mclimate-ht1','mclimate-ht2','mclimate-ht3','mclimate-ht4'].map(id=>DEVICES[id].data);
-  const base=mcs[0].filter(d=>d.time>=cut);
-  const temp=base.map((_,i)=>({time:mcs[0].filter(d=>d.time>=cut)[i].time, value:d3.mean(mcs,s=>s.filter(d=>d.time>=cut)[i].sensorTemperature)}));
-  const hum =base.map((_,i)=>({time:mcs[0].filter(d=>d.time>=cut)[i].time, value:d3.mean(mcs,s=>s.filter(d=>d.time>=cut)[i].relativeHumidity)}));
 
-  const x=d3.scaleTime().domain(d3.extent(temp,d=>d.time)).range([m.left,width-m.right]);
-  const yT=d3.scaleLinear().domain([d3.min(temp,d=>d.value)-1, d3.max(temp,d=>d.value)+1]).range([height-m.bottom,m.top]);
-  const yH=d3.scaleLinear().domain([d3.min(hum,d=>d.value)-4, d3.max(hum,d=>d.value)+4]).range([height-m.bottom,m.top]);
+  // which device lines to draw, plus how to get each point's temp/hum
+  let lines; // [{id, color, data:[{time,t,h}]}]
+  if (thSensor==='avg') {
+    const mcs = TH_IDS.map(id=>thSeries(id,cut));
+    const ref = mcs[0];
+    const data = ref.map((_,i)=>({
+      time: ref[i].time,
+      t: d3.mean(mcs, s=> s[i] ? s[i].sensorTemperature : undefined),
+      h: d3.mean(mcs, s=> s[i] ? s[i].relativeHumidity : undefined)
+    })).filter(d=>d.t!==undefined && d.h!==undefined);
+    lines = [{ id:'avg', color:'#0e9f8e', data }];
+  } else if (thSensor==='all') {
+    lines = TH_IDS.map(id=>({
+      id, color:TH_COLORS[id],
+      data: thSeries(id,cut).map(d=>({time:d.time, t:d.sensorTemperature, h:d.relativeHumidity}))
+    })).filter(l=>l.data.length);
+  } else {
+    lines = [{
+      id:thSensor, color:'#0e9f8e',
+      data: thSeries(thSensor,cut).map(d=>({time:d.time, t:d.sensorTemperature, h:d.relativeHumidity}))
+    }];
+  }
+
+  const allPts = lines.flatMap(l=>l.data);
+  if (!allPts.length){ svg.append('text').attr('x',width/2).attr('y',height/2).attr('text-anchor','middle').attr('fill','#a0aec0').attr('font-size','12').text('No readings in range'); return; }
+
+  const x=d3.scaleTime().domain(d3.extent(allPts,d=>d.time)).range([m.left,width-m.right]);
+  const yT=d3.scaleLinear().domain([d3.min(allPts,d=>d.t)-1, d3.max(allPts,d=>d.t)+1]).range([height-m.bottom,m.top]);
+  const yH=d3.scaleLinear().domain([d3.min(allPts,d=>d.h)-4, d3.max(allPts,d=>d.h)+4]).range([height-m.bottom,m.top]);
   const fmt=rangeHours.th<=24?d3.timeFormat('%H:%M'):d3.timeFormat('%d %b');
 
   svg.append('g').attr('class','grid').attr('transform',`translate(${m.left},0)`).call(d3.axisLeft(yT).ticks(4).tickSize(-(width-m.left-m.right)).tickFormat(''));
@@ -536,20 +592,27 @@ function drawTHChart(){
   svg.append('g').attr('class','axis').attr('transform',`translate(${m.left},0)`).call(d3.axisLeft(yT).ticks(4));
   svg.append('g').attr('class','axis').attr('transform',`translate(${width-m.right},0)`).call(d3.axisRight(yH).ticks(4));
 
-  const areaT=d3.area().x(d=>x(d.time)).y0(height-m.bottom).y1(d=>yT(d.value)).curve(d3.curveMonotoneX);
-  const grad=svg.append('defs').append('linearGradient').attr('id','tg').attr('x1',0).attr('y1',0).attr('x2',0).attr('y2',1);
-  grad.append('stop').attr('offset','0%').attr('stop-color','#0e9f8e').attr('stop-opacity',0.18);
-  grad.append('stop').attr('offset','100%').attr('stop-color','#0e9f8e').attr('stop-opacity',0);
-  svg.append('path').datum(temp).attr('fill','url(#tg)').attr('d',areaT);
+  const lineT=d3.line().x(d=>x(d.time)).y(d=>yT(d.t)).curve(d3.curveMonotoneX);
+  const lineH=d3.line().x(d=>x(d.time)).y(d=>yH(d.h)).curve(d3.curveMonotoneX);
 
-  const lineT=d3.line().x(d=>x(d.time)).y(d=>yT(d.value)).curve(d3.curveMonotoneX);
-  const lineH=d3.line().x(d=>x(d.time)).y(d=>yH(d.value)).curve(d3.curveMonotoneX);
-  svg.append('path').datum(temp).attr('fill','none').attr('stroke','#0e9f8e').attr('stroke-width',2).attr('d',lineT);
-  svg.append('path').datum(hum).attr('fill','none').attr('stroke','#3182ce').attr('stroke-width',2).attr('d',lineH);
+  // gradient fill only in single-line modes (avg or one sensor), for a clean look
+  if (thSensor!=='all') {
+    const areaT=d3.area().x(d=>x(d.time)).y0(height-m.bottom).y1(d=>yT(d.t)).curve(d3.curveMonotoneX);
+    const grad=svg.append('defs').append('linearGradient').attr('id','tg').attr('x1',0).attr('y1',0).attr('x2',0).attr('y2',1);
+    grad.append('stop').attr('offset','0%').attr('stop-color','#0e9f8e').attr('stop-opacity',0.18);
+    grad.append('stop').attr('offset','100%').attr('stop-color','#0e9f8e').attr('stop-opacity',0);
+    svg.append('path').datum(lines[0].data).attr('fill','url(#tg)').attr('d',areaT);
+  }
+
+  lines.forEach(l=>{
+    // temperature line in the device colour, humidity in blue (dashed when overlaying to keep it readable)
+    svg.append('path').datum(l.data).attr('fill','none').attr('stroke', thSensor==='all'? l.color : '#0e9f8e').attr('stroke-width',2).attr('d',lineT);
+    svg.append('path').datum(l.data).attr('fill','none').attr('stroke','#3182ce').attr('stroke-width',thSensor==='all'?1.2:2).attr('stroke-dasharray', thSensor==='all'?'4 3':'0').attr('opacity',thSensor==='all'?0.55:1).attr('d',lineH);
+  });
 
   const dots=svg.append('g');
-  dots.selectAll('.dt').data(temp.filter((_,i)=>i%3===0)).enter().append('circle').attr('cx',d=>x(d.time)).attr('cy',d=>yT(d.value)).attr('r',6).attr('fill','transparent');
-  addTip(dots.selectAll('circle'), d=>`${d.value.toFixed(1)} °C`);
+  dots.selectAll('c').data(lines[0].data.filter((_,i)=>i%3===0)).enter().append('circle').attr('cx',d=>x(d.time)).attr('cy',d=>yT(d.t)).attr('r',6).attr('fill','transparent');
+  addTip(dots.selectAll('circle'), d=>`${d.t.toFixed(1)} °C · ${d.h.toFixed(0)}%`);
 }
 
 function drawEnergyChart(){
