@@ -1,0 +1,597 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Atlantic Energy — Admin Console</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  *,*::before,*::after{ margin:0; padding:0; box-sizing:border-box; }
+  :root{
+    --bg:#0a1622; --sidebar:#0b1a2b; --surface:#0f2338; --surface-2:#13293f; --surface-3:#17324c;
+    --border:rgba(148,175,209,0.13); --border-2:rgba(148,175,209,0.22);
+    --text:#e7eef6; --text-mid:#9db2c9; --text-soft:#6b8299;
+    --teal:#16c8b4; --teal-light:#2ee6d2; --teal-dim:rgba(22,200,180,0.14);
+    --ok:#37d17f; --ok-bg:rgba(55,209,127,0.13); --ok-bd:rgba(55,209,127,0.32);
+    --warn:#f5b13f; --warn-bg:rgba(245,177,63,0.13); --warn-bd:rgba(245,177,63,0.34);
+    --alert:#ff6058; --alert-bg:rgba(255,96,88,0.13); --alert-bd:rgba(255,96,88,0.36);
+    --shadow:0 2px 6px rgba(0,0,0,0.3), 0 12px 34px rgba(0,0,0,0.34);
+  }
+  body{ font-family:'IBM Plex Sans',sans-serif; background:var(--bg); color:var(--text); min-height:100vh; -webkit-font-smoothing:antialiased; }
+  .mono{ font-family:'IBM Plex Mono',monospace; } .hidden{ display:none !important; }
+  ::-webkit-scrollbar{ width:10px; height:10px; } ::-webkit-scrollbar-thumb{ background:var(--surface-3); border-radius:6px; } ::-webkit-scrollbar-track{ background:transparent; }
+
+  /* Login */
+  #login-screen{ position:fixed; inset:0; z-index:60; display:flex; align-items:center; justify-content:center; background:radial-gradient(1100px 560px at 60% -10%, #123b5c 0%, #0a1622 60%); }
+  .login-card{ background:var(--surface); border:1px solid var(--border); border-radius:16px; padding:38px 36px; width:380px; box-shadow:var(--shadow); }
+  .login-logo{ display:flex; align-items:center; gap:11px; margin-bottom:24px; }
+  .mark{ width:38px; height:38px; border-radius:10px; background:linear-gradient(135deg,var(--teal),var(--teal-light)); display:flex; align-items:center; justify-content:center; box-shadow:0 6px 18px rgba(22,200,180,0.35); }
+  .mark svg{ width:22px; height:22px; }
+  .login-brand{ font-size:17px; font-weight:600; } .login-sub{ font-size:10.5px; font-weight:500; color:var(--teal-light); letter-spacing:0.09em; text-transform:uppercase; }
+  .field label{ display:block; font-size:11.5px; color:var(--text-mid); font-weight:500; margin-bottom:6px; }
+  .field input, .field select{ width:100%; padding:10px 12px; background:var(--surface-2); border:1px solid var(--border); border-radius:9px; color:var(--text); font-family:inherit; font-size:13.5px; }
+  .field input:focus, .field select:focus{ outline:none; border-color:var(--teal); box-shadow:0 0 0 3px var(--teal-dim); }
+  .field select option{ background:var(--surface-2); color:var(--text); }
+  .login-btn{ width:100%; margin-top:12px; padding:12px; background:var(--teal); color:#04201c; border:none; border-radius:9px; font-family:inherit; font-size:14px; font-weight:700; cursor:pointer; }
+  .login-btn:hover{ background:var(--teal-light); }
+  .login-error{ color:var(--alert); font-size:12px; margin-top:12px; min-height:16px; }
+
+  /* Shell */
+  .shell{ display:flex; min-height:100vh; }
+  .sidebar{ width:248px; flex:none; background:var(--sidebar); border-right:1px solid var(--border); display:flex; flex-direction:column; position:sticky; top:0; height:100vh; }
+  .sb-brand{ display:flex; align-items:center; gap:11px; padding:18px 20px; border-bottom:1px solid var(--border); }
+  .sb-brand .mark{ width:34px; height:34px; }
+  .sb-bname{ font-size:14px; font-weight:600; } .sb-bsub{ font-size:9.5px; color:var(--teal-light); letter-spacing:0.1em; text-transform:uppercase; }
+  .sb-scroll{ flex:1; overflow-y:auto; padding:12px; }
+  .sb-cta{ margin:4px 0 12px; }
+  .nav-item{ display:flex; align-items:center; gap:10px; padding:10px 12px; border-radius:9px; cursor:pointer; font-size:13.5px; color:var(--text-mid); transition:background .12s,color .12s; }
+  .nav-item:hover{ background:var(--surface); color:var(--text); }
+  .nav-item.active{ background:var(--teal-dim); color:var(--text); font-weight:500; }
+  .nav-item svg{ width:17px; height:17px; flex:none; }
+  .nav-item .n-ct{ margin-left:auto; font-size:11px; font-family:'IBM Plex Mono',monospace; color:var(--text-soft); }
+  .sb-foot{ border-top:1px solid var(--border); padding:12px; display:flex; flex-direction:column; gap:4px; }
+  .sb-btn{ display:flex; align-items:center; gap:9px; padding:9px 11px; border-radius:9px; cursor:pointer; font-size:12.5px; color:var(--text-mid); background:none; border:none; font-family:inherit; text-align:left; width:100%; }
+  .sb-btn:hover{ background:var(--surface); color:var(--text); } .sb-btn svg{ width:15px; height:15px; }
+
+  .main{ flex:1; min-width:0; display:flex; flex-direction:column; }
+  .topbar{ height:60px; border-bottom:1px solid var(--border); display:flex; align-items:center; justify-content:space-between; padding:0 26px; position:sticky; top:0; background:rgba(10,22,34,0.85); backdrop-filter:blur(8px); z-index:20; }
+  .tb-title{ font-size:16px; font-weight:600; } .tb-sub{ font-size:11px; color:var(--text-soft); margin-top:1px; }
+  .content{ padding:22px 26px 70px; }
+
+  /* Buttons */
+  .btn{ padding:10px 16px; border:none; border-radius:9px; font-family:inherit; font-size:13px; font-weight:600; cursor:pointer; display:inline-flex; align-items:center; gap:7px; }
+  .btn-primary{ background:var(--teal); color:#04201c; } .btn-primary:hover{ background:var(--teal-light); }
+  .btn-ghost{ background:var(--surface); border:1px solid var(--border); color:var(--text-mid); } .btn-ghost:hover{ color:var(--text); border-color:var(--border-2); }
+  .btn svg{ width:15px; height:15px; }
+  .btn-add{ background:var(--surface-2); border:1px dashed var(--teal); color:var(--teal); padding:10px 14px; border-radius:9px; font-size:12.5px; font-weight:600; cursor:pointer; font-family:inherit; }
+  .btn-add:hover{ background:var(--teal-dim); }
+  .btn-danger-ghost{ background:none; border:1px solid var(--border); color:var(--text-mid); padding:8px 12px; border-radius:8px; font-size:12px; cursor:pointer; font-family:inherit; }
+  .btn-danger-ghost:hover{ border-color:var(--alert); color:var(--alert); }
+  .row-act{ text-align:right; white-space:nowrap; }
+  .btn-mini{ background:var(--surface-2); border:1px solid var(--border); color:var(--text-mid); border-radius:7px; padding:5px 10px; font-family:inherit; font-size:11.5px; cursor:pointer; margin-left:6px; }
+  .btn-mini:hover{ border-color:var(--teal); color:var(--text); }
+  .btn-mini.danger:hover{ border-color:var(--alert); color:var(--alert); }
+  .btn-mini:disabled{ opacity:0.4; cursor:default; }
+
+  .page-head{ display:flex; justify-content:space-between; align-items:flex-end; margin-bottom:18px; flex-wrap:wrap; gap:12px; }
+  .page-title{ font-size:19px; font-weight:600; } .page-sub{ font-size:12.5px; color:var(--text-soft); margin-top:3px; max-width:640px; }
+
+  /* Stats */
+  .stat-row{ display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:14px; margin-bottom:22px; }
+  .stat{ background:var(--surface); border:1px solid var(--border); border-radius:13px; padding:16px 18px; position:relative; overflow:hidden; }
+  .stat::before{ content:''; position:absolute; left:0; top:0; bottom:0; width:3px; background:var(--teal); }
+  .stat .label{ font-size:11px; color:var(--text-soft); font-weight:500; text-transform:uppercase; letter-spacing:0.05em; }
+  .stat .value{ font-size:30px; font-weight:600; font-family:'IBM Plex Mono',monospace; margin-top:6px; line-height:1; }
+  .stat .foot{ font-size:11px; color:var(--text-soft); margin-top:7px; }
+
+  /* Cards / tables */
+  .card{ background:var(--surface); border:1px solid var(--border); border-radius:14px; overflow:hidden; margin-bottom:20px; }
+  .card-head{ display:flex; justify-content:space-between; align-items:center; padding:15px 20px; border-bottom:1px solid var(--border); background:var(--surface-2); }
+  .card-head h2{ font-size:15px; font-weight:600; } .card-head .count{ font-size:12px; color:var(--text-soft); font-weight:400; margin-left:7px; }
+  table{ width:100%; border-collapse:collapse; font-size:13px; }
+  th{ text-align:left; font-size:10px; text-transform:uppercase; letter-spacing:0.07em; color:var(--text-soft); font-weight:600; padding:11px 20px; border-bottom:1px solid var(--border); background:var(--surface-2); }
+  td{ padding:12px 20px; border-bottom:1px solid var(--border); }
+  tbody tr:last-child td{ border-bottom:none; } tbody tr:hover{ background:var(--surface-2); }
+  .tag{ background:var(--surface-2); border:1px solid var(--border); border-radius:6px; padding:2px 9px; font-size:11px; font-weight:500; }
+  .tag.admin{ background:var(--warn-bg); border-color:var(--warn-bd); color:var(--warn); }
+  .tag.ok{ background:var(--ok-bg); border-color:var(--ok-bd); color:var(--ok); }
+  .empty{ color:var(--text-soft); font-size:13px; padding:22px 20px; text-align:center; }
+
+  /* Fields / forms */
+  .helper{ font-size:11px; color:var(--text-soft); margin-top:5px; } .helper.mono{ font-family:'IBM Plex Mono',monospace; }
+  .msg{ font-size:12.5px; margin-top:10px; min-height:16px; } .msg.ok{ color:var(--ok); } .msg.err{ color:var(--alert); }
+  .form-grid{ display:grid; gap:14px; grid-template-columns:1fr 1fr; } .form-grid .full{ grid-column:1/-1; }
+
+  /* Drawer */
+  .scrim{ position:fixed; inset:0; background:rgba(3,9,16,0.55); z-index:40; opacity:0; pointer-events:none; transition:opacity .2s; }
+  .scrim.show{ opacity:1; pointer-events:auto; }
+  .drawer{ position:fixed; top:0; right:0; bottom:0; width:440px; max-width:92vw; background:var(--bg); z-index:50; box-shadow:var(--shadow); transform:translateX(100%); transition:transform .24s cubic-bezier(.4,0,.2,1); display:flex; flex-direction:column; border-left:1px solid var(--border); }
+  .drawer.show{ transform:translateX(0); }
+  .drawer-head{ padding:20px 24px; background:var(--surface); border-bottom:1px solid var(--border); display:flex; justify-content:space-between; align-items:center; }
+  .drawer-head h3{ font-size:16px; font-weight:600; } .drawer-head .sub{ font-size:11.5px; color:var(--teal-light); margin-top:2px; }
+  .drawer-x{ background:var(--surface-2); border:1px solid var(--border); color:var(--text-mid); width:30px; height:30px; border-radius:8px; cursor:pointer; font-size:17px; line-height:1; }
+  .drawer-body{ padding:24px; overflow-y:auto; flex:1; }
+  .drawer-foot{ padding:16px 24px; border-top:1px solid var(--border); background:var(--surface); display:flex; gap:10px; justify-content:flex-end; }
+
+  /* Wizard */
+  .wiz-scrim{ position:fixed; inset:0; background:rgba(3,9,16,0.66); z-index:70; display:none; align-items:flex-start; justify-content:center; padding:40px 20px; overflow-y:auto; }
+  .wiz-scrim.show{ display:flex; }
+  .wiz{ background:var(--surface); border:1px solid var(--border); border-radius:16px; width:720px; max-width:100%; box-shadow:var(--shadow); overflow:hidden; }
+  .wiz-head{ padding:22px 28px; border-bottom:1px solid var(--border); display:flex; justify-content:space-between; align-items:center; }
+  .wiz-head h2{ font-size:18px; font-weight:600; }
+  .wiz-steps{ display:flex; gap:0; padding:18px 28px 6px; }
+  .wstep{ display:flex; align-items:center; gap:10px; flex:1; }
+  .wstep .num{ width:28px; height:28px; border-radius:50%; background:var(--surface-2); border:2px solid var(--border); color:var(--text-soft); display:flex; align-items:center; justify-content:center; font-size:13px; font-weight:600; flex:none; transition:all .2s; }
+  .wstep .txt{ font-size:12.5px; color:var(--text-soft); font-weight:500; }
+  .wstep .bar{ height:2px; background:var(--border); flex:1; margin:0 10px; }
+  .wstep.active .num{ background:var(--teal); border-color:var(--teal); color:#04201c; }
+  .wstep.done .num{ background:var(--teal-dim); border-color:var(--teal); color:var(--teal-light); }
+  .wstep.active .txt, .wstep.done .txt{ color:var(--text); }
+  .wiz-body{ padding:20px 28px 8px; min-height:240px; }
+  .wiz-foot{ padding:18px 28px; border-top:1px solid var(--border); display:flex; justify-content:space-between; align-items:center; }
+  .wiz-intro{ font-size:13px; color:var(--text-mid); margin-bottom:18px; line-height:1.55; }
+  .chip-list{ display:flex; flex-direction:column; gap:8px; margin-top:14px; }
+  .chip{ display:flex; align-items:center; gap:12px; padding:11px 14px; background:var(--surface-2); border:1px solid var(--border); border-radius:10px; font-size:13px; }
+  .chip .mono{ font-size:12px; color:var(--text-soft); } .chip .chip-name{ font-weight:600; }
+  .chip .chip-rm{ margin-left:auto; background:none; border:none; color:var(--text-soft); cursor:pointer; font-size:16px; } .chip .chip-rm:hover{ color:var(--alert); }
+
+  .gate{ margin-top:14px; padding:12px 14px; border-radius:10px; font-size:12.5px; background:var(--warn-bg); border:1px solid var(--warn-bd); color:var(--warn); line-height:1.5; }
+  .gate strong{ font-weight:600; } .gate label{ display:flex; align-items:center; gap:8px; margin-top:9px; cursor:pointer; color:var(--text-mid); }
+
+  /* config editor */
+  .cfg-device{ border:1px solid var(--border); border-radius:12px; margin-bottom:14px; overflow:hidden; }
+  .cfg-device-head{ padding:13px 16px; background:var(--surface-2); border-bottom:1px solid var(--border); display:flex; align-items:center; gap:10px; }
+  .cfg-device-head .cd-name{ font-weight:600; font-size:14px; } .cfg-device-head .cd-sub{ font-size:11.5px; color:var(--text-soft); }
+  .cfg-fields{ padding:6px 16px 14px; }
+  .fieldrow{ display:flex; align-items:center; gap:12px; padding:11px 0; border-bottom:1px solid var(--border); flex-wrap:wrap; } .fieldrow:last-child{ border-bottom:none; }
+  .fieldrow .chk{ display:flex; align-items:center; gap:9px; min-width:210px; }
+  .fieldrow .chk input{ width:17px; height:17px; accent-color:var(--teal); cursor:pointer; }
+  .fieldrow .chk .k{ font-size:13px; font-weight:500; } .fieldrow .chk .kv{ font-family:'IBM Plex Mono',monospace; font-size:11px; color:var(--text-soft); }
+  .fieldrow .opts{ display:flex; gap:8px; align-items:center; flex:1; flex-wrap:wrap; }
+  .fieldrow .opts input, .fieldrow .opts select{ padding:7px 9px; background:var(--surface-2); border:1px solid var(--border); border-radius:7px; font-family:inherit; font-size:12.5px; color:var(--text); }
+  .fieldrow .opts .lbl-in{ width:130px; } .fieldrow .opts .unit-in{ width:64px; }
+  .fieldrow.off .opts{ opacity:0.35; pointer-events:none; }
+  .alert-toggle{ font-size:11.5px; color:var(--teal); cursor:pointer; font-weight:500; user-select:none; }
+  .alert-row{ display:flex; gap:8px; align-items:center; flex-wrap:wrap; width:100%; margin-top:6px; padding-left:29px; }
+  .alert-row .th{ display:flex; align-items:center; gap:5px; font-size:11px; color:var(--text-soft); }
+  .alert-row .th input{ width:66px; padding:6px 8px; background:var(--surface-2); border:1px solid var(--border); border-radius:6px; font-family:'IBM Plex Mono',monospace; font-size:12px; color:var(--text); }
+  .alert-row .th.amber label{ color:var(--warn); } .alert-row .th.red label{ color:var(--alert); }
+  .cfg-topbar{ display:flex; gap:16px; align-items:flex-end; flex-wrap:wrap; margin-bottom:18px; }
+  .toggle{ display:inline-flex; align-items:center; gap:9px; cursor:pointer; font-size:13px; color:var(--text-mid); }
+  .toggle input{ position:absolute; opacity:0; width:0; height:0; }
+  .toggle .track{ width:38px; height:22px; border-radius:12px; background:var(--surface-3); position:relative; transition:background .15s; flex:none; }
+  .toggle .track::after{ content:''; position:absolute; top:2px; left:2px; width:18px; height:18px; border-radius:50%; background:#fff; transition:transform .15s; }
+  .toggle input:checked + .track{ background:var(--teal); } .toggle input:checked + .track::after{ transform:translateX(16px); }
+  .note{ background:var(--teal-dim); border:1px solid var(--border-2); color:var(--text-mid); font-size:12.5px; padding:12px 14px; border-radius:10px; line-height:1.5; }
+</style>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div id="login-screen">
+  <div class="login-card">
+    <div class="login-logo">
+      <div class="mark"><svg viewBox="0 0 24 24" fill="none"><path d="M13 2L4.5 13H11l-1 9 8.5-11H12l1-9z" fill="#04201c"/></svg></div>
+      <div><div class="login-brand">Atlantic Energy</div><div class="login-sub">Admin Console</div></div>
+    </div>
+    <div class="field" style="margin-bottom:14px"><label>Email</label><input id="email" type="email" value="admin@test.local"></div>
+    <div class="field" style="margin-bottom:8px"><label>Password</label><input id="password" type="password" placeholder="••••••••"></div>
+    <button class="login-btn" onclick="doLogin()" id="login-btn">Sign in</button>
+    <div class="login-error" id="login-error"></div>
+  </div>
+</div>
+
+<!-- APP -->
+<div id="app" class="shell hidden">
+  <aside class="sidebar">
+    <div class="sb-brand">
+      <div class="mark"><svg viewBox="0 0 24 24" fill="none"><path d="M13 2L4.5 13H11l-1 9 8.5-11H12l1-9z" fill="#04201c"/></svg></div>
+      <div><div class="sb-bname">Atlantic Energy</div><div class="sb-bsub">Admin Console</div></div>
+    </div>
+    <div class="sb-scroll">
+      <div class="sb-cta"><button class="btn btn-primary" style="width:100%;justify-content:center" onclick="openWizard()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 5v14M5 12h14"/></svg>Onboard client</button></div>
+      <div class="nav-item active" id="nav-overview" onclick="setView('overview')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/></svg>Overview</div>
+      <div class="nav-item" id="nav-clients" onclick="setView('clients')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2M9 11a4 4 0 100-8 4 4 0 000 8zM23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/></svg>Clients<span class="n-ct" id="nav-clients-ct"></span></div>
+      <div class="nav-item" id="nav-devices" onclick="setView('devices')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="4" width="16" height="16" rx="3"/><path d="M9 9h6v6H9z"/></svg>Devices<span class="n-ct" id="nav-devices-ct"></span></div>
+      <div class="nav-item" id="nav-dashboards" onclick="setView('dashboards')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18M7 14l4-4 3 3 5-6"/></svg>Dashboards</div>
+    </div>
+    <div class="sb-foot">
+      <button class="sb-btn" onclick="loadAll()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 11A8 8 0 106 6l-2 2m0 0V4m0 4h4"/></svg>Refresh</button>
+      <button class="sb-btn" onclick="logout()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 17l5-5-5-5M21 12H9M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/></svg>Sign out</button>
+    </div>
+  </aside>
+
+  <div class="main">
+    <div class="topbar"><div><div class="tb-title" id="tb-title">Overview</div><div class="tb-sub" id="tb-sub"></div></div></div>
+    <div class="content">
+
+      <div class="tab-panel" id="panel-overview">
+        <div class="page-head"><div><div class="page-title">Overview</div><div class="page-sub">Add a client and their sensors, then set up what they see — no code, changes go live instantly.</div></div>
+          <button class="btn btn-primary" onclick="openWizard()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 5v14M5 12h14"/></svg>Onboard new client</button></div>
+        <div class="stat-row" id="stat-row"></div>
+        <div class="card"><div class="card-head"><h2>Clients<span class="count" id="ov-client-count"></span></h2></div>
+          <table><thead><tr><th>Client</th><th>ID</th><th>Devices</th><th>Role</th></tr></thead><tbody id="ov-client-rows"></tbody></table></div>
+      </div>
+
+      <div class="tab-panel hidden" id="panel-clients">
+        <div class="page-head"><div><div class="page-title">Clients</div><div class="page-sub">Each client logs in and sees only their own sensors.</div></div>
+          <button class="btn btn-primary" onclick="openClientDrawer()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 5v14M5 12h14"/></svg>Add client</button></div>
+        <div class="card"><div class="card-head"><h2>All clients<span class="count" id="clientCount"></span></h2></div>
+          <table><thead><tr><th>Name</th><th>ID (slug)</th><th>Email</th><th>Role</th><th style="text-align:right">Actions</th></tr></thead><tbody id="clientRows"></tbody></table></div>
+      </div>
+
+      <div class="tab-panel hidden" id="panel-devices">
+        <div class="page-head"><div><div class="page-title">Devices</div><div class="page-sub">Map each sensor's DevEUI to a client. This is what routes incoming data.</div></div>
+          <button class="btn btn-primary" onclick="openDeviceDrawer()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 5v14M5 12h14"/></svg>Add device</button></div>
+        <div class="card"><div class="card-head"><h2>Mapped devices<span class="count" id="deviceCount"></span></h2></div>
+          <table><thead><tr><th>DevEUI</th><th>Client</th><th>Sensor</th><th>Model</th><th>Name</th></tr></thead><tbody id="deviceRows"></tbody></table></div>
+      </div>
+
+      <div class="tab-panel hidden" id="panel-dashboards">
+        <div class="page-head"><div><div class="page-title">Dashboards</div><div class="page-sub">Choose what each client sees — tick the readings, add alert thresholds, done.</div></div></div>
+        <div class="card">
+          <div class="card-head" style="gap:14px">
+            <div class="field" style="min-width:260px;margin:0"><label>Client</label>
+              <select id="cfg-tenant" onchange="cfgLoad()"><option value="">— select a client —</option></select></div>
+            <button class="btn btn-ghost" id="cfg-reload" onclick="cfgLoad()" disabled>Reload</button>
+          </div>
+          <div style="padding:20px">
+            <div id="cfg-placeholder" class="empty">Pick a client above to set up their dashboard.</div>
+            <div id="cfg-editor" class="hidden">
+              <div class="cfg-topbar">
+                <div class="field" style="flex:1;min-width:220px;margin:0"><label>Dashboard title</label><input id="cfg-title" placeholder="defaults to the client's name"></div>
+                <label class="toggle"><input type="checkbox" id="cfg-pdf"><span class="track"></span>Show “Export PDF” button</label>
+              </div>
+              <div id="cfg-devices"></div>
+              <div style="display:flex;align-items:center;gap:14px;margin-top:6px">
+                <button class="btn btn-primary" onclick="cfgSave()">Save dashboard</button><span class="msg" id="cfg-msg"></span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- DRAWER -->
+<div class="scrim" id="scrim" onclick="closeDrawer()"></div>
+<div class="drawer" id="drawer">
+  <div class="drawer-head"><div><h3 id="drawer-title">—</h3><div class="sub" id="drawer-sub"></div></div><button class="drawer-x" onclick="closeDrawer()">×</button></div>
+  <div class="drawer-body" id="drawer-body"></div>
+  <div class="drawer-foot" id="drawer-foot"></div>
+</div>
+
+<!-- WIZARD -->
+<div class="wiz-scrim" id="wiz-scrim">
+  <div class="wiz">
+    <div class="wiz-head"><h2>Onboard a new client</h2><button class="drawer-x" onclick="closeWizard()">×</button></div>
+    <div class="wiz-steps" id="wiz-steps">
+      <div class="wstep active" data-s="1"><span class="num">1</span><span class="txt">Client details</span><span class="bar"></span></div>
+      <div class="wstep" data-s="2"><span class="num">2</span><span class="txt">Add sensors</span><span class="bar"></span></div>
+      <div class="wstep" data-s="3"><span class="num">3</span><span class="txt">Dashboard</span></div>
+    </div>
+    <div class="wiz-body" id="wiz-body"></div>
+    <div class="wiz-foot">
+      <button class="btn btn-ghost" id="wiz-back" onclick="wizBack()">Back</button>
+      <div style="display:flex;align-items:center;gap:14px"><span class="msg" id="wiz-msg"></span><button class="btn btn-primary" id="wiz-next" onclick="wizNext()">Next →</button></div>
+    </div>
+  </div>
+</div>
+
+<datalist id="models"><option>HT</option><option>CT101</option><option>AM307</option><option>CubicMeter</option><option>R718N17</option><option>R809</option><option>LoadCell</option><option>SE01-LB</option><option>SPH01-LB</option><option>D20-LS</option><option>LHT65N</option></datalist>
+
+<script>
+const API_BASE=(location.protocol==='file:'||location.hostname==='localhost'||location.hostname==='127.0.0.1')?'http://localhost:7071/api':'https://aec-ingest-d7ebdah9b6e5e9bf.westeurope-01.azurewebsites.net/api';
+let TOKEN=null, ME=null, CLIENTS={}, DEVICES={};
+const KNOWN_MODELS=new Set(['SE01-LB','SPH01-LB','D20-LS','LHT65N','CT101','CUBICMETER','R718N17','R809','AM307','LOADCELL','MCLIMATE HT','HT']);
+const isKnownModel=m=>KNOWN_MODELS.has((m||'').trim().toUpperCase());
+function esc(s){ return String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+function slugify(s){ return (s||'').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'').slice(0,30); }
+
+async function doLogin(){
+  const btn=document.getElementById('login-btn'), err=document.getElementById('login-error'); err.textContent='';
+  const email=document.getElementById('email').value.trim(), password=document.getElementById('password').value;
+  if(!email||!password){ err.textContent='Enter email and password.'; return; }
+  btn.disabled=true; btn.textContent='Signing in…';
+  try{
+    const res=await fetch(`${API_BASE}/Login`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email,password})});
+    if(res.status===401) throw new Error('Invalid email or password.');
+    if(res.status===429){ const m=Math.ceil(parseInt(res.headers.get('Retry-After')||'900',10)/60); throw new Error(`Too many attempts. Try again in ${m} min.`); }
+    if(!res.ok) throw new Error('Login failed ('+res.status+').');
+    const data=await res.json(); if(data.role!=='admin') throw new Error('That account is not an admin.');
+    TOKEN=data.token; ME=data.customerId; document.getElementById('login-screen').classList.add('hidden'); document.getElementById('app').classList.remove('hidden'); loadAll();
+  }catch(e){ err.textContent=e.message||'Could not reach the server.'; }
+  finally{ btn.disabled=false; btn.textContent='Sign in'; }
+}
+document.getElementById('password').addEventListener('keydown',e=>{ if(e.key==='Enter') doLogin(); });
+function logout(){ TOKEN=null; document.getElementById('app').classList.add('hidden'); document.getElementById('login-screen').classList.remove('hidden'); document.getElementById('password').value=''; }
+function authGet(path){ return fetch(`${API_BASE}${path}`,{headers:{Authorization:'Bearer '+TOKEN}}); }
+function authPost(path,body){ return fetch(`${API_BASE}${path}`,{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+TOKEN},body:JSON.stringify(body)}); }
+function authPut(path,body){ return fetch(`${API_BASE}${path}`,{method:'PUT',headers:{'Content-Type':'application/json',Authorization:'Bearer '+TOKEN},body:JSON.stringify(body)}); }
+function authDelete(path){ return fetch(`${API_BASE}${path}`,{method:'DELETE',headers:{Authorization:'Bearer '+TOKEN}}); }
+
+const VIEW_TITLES={overview:'Overview',clients:'Clients',devices:'Devices',dashboards:'Dashboards'};
+function setView(name){
+  document.querySelectorAll('.tab-panel').forEach(p=>p.classList.add('hidden'));
+  document.getElementById('panel-'+name).classList.remove('hidden');
+  document.querySelectorAll('.nav-item').forEach(t=>t.classList.remove('active'));
+  const nav=document.getElementById('nav-'+name); if(nav) nav.classList.add('active');
+  document.getElementById('tb-title').textContent=VIEW_TITLES[name]||name;
+}
+
+async function loadAll(){
+  try{
+    const [cRes,dRes]=await Promise.all([authGet('/manage/clients'),authGet('/manage/devices')]);
+    if(cRes.status===401||dRes.status===401){ logout(); return; }
+    CLIENTS=await cRes.json(); DEVICES=await dRes.json();
+    renderOverview(); renderClients(); renderDevices(); cfgPopulateTenants();
+  }catch(e){ console.error(e); }
+}
+function devicesForClient(id){ return Object.entries(DEVICES).filter(([,d])=>d.customerId===id); }
+
+function renderOverview(){
+  const nc=Object.keys(CLIENTS).length, nd=Object.keys(DEVICES).length;
+  const known=Object.values(DEVICES).filter(d=>isKnownModel(d.model)).length;
+  document.getElementById('nav-clients-ct').textContent=nc; document.getElementById('nav-devices-ct').textContent=nd;
+  document.getElementById('stat-row').innerHTML=`
+    <div class="stat"><div class="label">Clients</div><div class="value">${nc}</div><div class="foot">tenants on the platform</div></div>
+    <div class="stat"><div class="label">Devices mapped</div><div class="value">${nd}</div><div class="foot">${known}/${nd} on supported decoders</div></div>
+    <div class="stat"><div class="label">Free to onboard</div><div class="value">${nc?'∞':'—'}</div><div class="foot">no per-client code</div></div>`;
+  const rows=Object.entries(CLIENTS);
+  document.getElementById('ov-client-count').textContent=`· ${rows.length}`;
+  document.getElementById('ov-client-rows').innerHTML = rows.length? rows.map(([id,c])=>{ const n=devicesForClient(id).length;
+    return `<tr><td><strong>${esc(c.name)}</strong></td><td class="mono">${id}</td><td>${n} device${n===1?'':'s'}</td><td><span class="tag ${c.role==='admin'?'admin':'ok'}">${c.role==='admin'?'admin':'client'}</span></td></tr>`; }).join('')
+    : `<tr><td colspan="4" class="empty">No clients yet — click “Onboard new client”.</td></tr>`;
+}
+function renderClients(){
+  const rows=Object.entries(CLIENTS); document.getElementById('clientCount').textContent=`· ${rows.length}`;
+  document.getElementById('clientRows').innerHTML = rows.length? rows.map(([id,c])=>
+    `<tr><td><strong>${esc(c.name)}</strong></td><td class="mono">${id}</td><td>${esc(c.email||'')}</td><td><span class="tag ${c.role==='admin'?'admin':''}">${c.role||'customer'}</span></td>
+      <td class="row-act"><button class="btn-mini" onclick="openEditClientDrawer('${id}')">Edit</button><button class="btn-mini danger" ${id===ME?'disabled title="the account you are signed in with"':''} onclick="deleteClient('${id}')">Delete</button></td></tr>`).join('')
+    : `<tr><td colspan="5" class="empty">No clients yet.</td></tr>`;
+}
+function openEditClientDrawer(id){
+  const c=CLIENTS[id]; if(!c) return;
+  openDrawer('Edit client', id);
+  document.getElementById('drawer-body').innerHTML=`
+    <div class="field" style="margin-bottom:14px"><label>Client name</label><input id="ec-name" value="${esc(c.name||'')}"></div>
+    <div class="field" style="margin-bottom:14px"><label>Login email</label><input id="ec-email" type="email" value="${esc(c.email||'')}"></div>
+    <div class="field" style="margin-bottom:14px"><label>Role</label><select id="ec-role"><option value="customer">customer</option><option value="admin">admin</option></select></div>
+    <div class="field"><label>New password</label><input id="ec-pass" placeholder="leave blank to keep current"></div>
+    <div class="helper">Login ID <span class="mono">${esc(id)}</span> can't be changed.</div>
+    <div class="msg" id="ec-msg"></div>`;
+  document.getElementById('ec-role').value=c.role||'customer';
+  document.getElementById('drawer-foot').innerHTML=`<button class="btn btn-ghost" onclick="closeDrawer()">Cancel</button><button class="btn btn-primary" onclick="saveEditClient('${id}')">Save changes</button>`;
+}
+async function saveEditClient(id){
+  const msg=document.getElementById('ec-msg'); msg.textContent=''; msg.className='msg';
+  const body={ name:document.getElementById('ec-name').value.trim(), email:document.getElementById('ec-email').value.trim(), role:document.getElementById('ec-role').value };
+  const pass=document.getElementById('ec-pass').value; if(pass) body.password=pass;
+  const res=await authPut(`/manage/clients/${encodeURIComponent(id)}`, body); const text=await res.text();
+  if(res.ok){ await loadAll(); closeDrawer(); } else{ msg.className='msg err'; msg.textContent=text||('Failed ('+res.status+')'); }
+}
+async function deleteClient(id){
+  const c=CLIENTS[id]; if(!c) return; const n=devicesForClient(id).length;
+  if(!confirm(`Delete client “${c.name}” (${id})?\n\nThis removes their login and dashboard config${n?` and unmaps their ${n} device${n>1?'s':''}`:''}. Their stored readings are left in place.\n\nThis can't be undone.`)) return;
+  const res=await authDelete(`/manage/clients/${encodeURIComponent(id)}`); const text=await res.text();
+  if(res.ok){ await loadAll(); } else{ alert('Delete failed: '+(text||res.status)); }
+}
+function renderDevices(){
+  const rows=Object.entries(DEVICES); document.getElementById('deviceCount').textContent=`· ${rows.length}`;
+  document.getElementById('deviceRows').innerHTML = rows.length? rows.map(([eui,d])=>
+    `<tr><td class="mono">${eui}</td><td class="mono">${d.customerId}</td><td>${esc(d.sensorId)}</td><td>${esc(d.model||'')} ${isKnownModel(d.model)?'':'<span class="tag admin" style="margin-left:4px">new decoder</span>'}</td><td>${esc(d.name||'')}</td></tr>`).join('')
+    : `<tr><td colspan="5" class="empty">No devices mapped yet.</td></tr>`;
+}
+
+/* Drawer */
+function openDrawer(title,sub){ document.getElementById('drawer-title').textContent=title; document.getElementById('drawer-sub').textContent=sub||''; document.getElementById('scrim').classList.add('show'); document.getElementById('drawer').classList.add('show'); }
+function closeDrawer(){ document.getElementById('scrim').classList.remove('show'); document.getElementById('drawer').classList.remove('show'); }
+function openClientDrawer(){
+  openDrawer('Add client','New login + private data space');
+  document.getElementById('drawer-body').innerHTML=`
+    <div class="field" style="margin-bottom:14px"><label>Client name</label><input id="dc-name" placeholder="Carne Golf Links" oninput="document.getElementById('dc-id').value=slugify(this.value); document.getElementById('dc-slughint').textContent='customers/'+(document.getElementById('dc-id').value||'<id>')+'/'"></div>
+    <div class="field" style="margin-bottom:14px"><label>Login ID</label><input id="dc-id" placeholder="carne"><div class="helper mono" id="dc-slughint">customers/&lt;id&gt;/</div></div>
+    <div class="field" style="margin-bottom:14px"><label>Login email</label><input id="dc-email" type="email" placeholder="ops@client.com"></div>
+    <div class="field" style="margin-bottom:14px"><label>Temporary password</label><input id="dc-pass" placeholder="6+ characters"></div>
+    <div class="field"><label>Role</label><select id="dc-role"><option value="customer">customer</option><option value="admin">admin</option></select></div>
+    <div class="msg" id="dc-msg"></div>`;
+  document.getElementById('drawer-foot').innerHTML=`<button class="btn btn-ghost" onclick="closeDrawer()">Cancel</button><button class="btn btn-primary" onclick="drawerAddClient()">Add client</button>`;
+}
+async function drawerAddClient(){
+  const msg=document.getElementById('dc-msg'); msg.textContent=''; msg.className='msg';
+  const body={ customerId:document.getElementById('dc-id').value.trim(), name:document.getElementById('dc-name').value.trim(), email:document.getElementById('dc-email').value.trim(), password:document.getElementById('dc-pass').value, role:document.getElementById('dc-role').value };
+  const res=await authPost('/manage/clients',body); const text=await res.text();
+  if(res.ok){ await loadAll(); closeDrawer(); } else{ msg.className='msg err'; msg.textContent=text||('Failed ('+res.status+')'); }
+}
+function openDeviceDrawer(){
+  openDrawer('Add device','Map a sensor to a client');
+  const opts=Object.entries(CLIENTS).map(([id,c])=>`<option value="${id}">${esc(c.name)} (${id})</option>`).join('');
+  document.getElementById('drawer-body').innerHTML=`
+    <div class="field" style="margin-bottom:14px"><label>Client</label><select id="dd-client">${opts}</select></div>
+    <div class="field" style="margin-bottom:14px"><label>DevEUI</label><input id="dd-eui" placeholder="A84041AABBCCDDEE" maxlength="16" style="font-family:'IBM Plex Mono',monospace"><div class="helper">16 hex characters — copy it from The Things Network</div></div>
+    <div class="field" style="margin-bottom:14px"><label>Sensor ID</label><input id="dd-sensor" placeholder="soil-north"><div class="helper">short name used in the data path</div></div>
+    <div class="field" style="margin-bottom:14px"><label>Model</label><input id="dd-model" list="models" placeholder="CT101" oninput="drawerGate()"></div>
+    <div class="field"><label>Friendly name</label><input id="dd-name" placeholder="North green soil"></div>
+    <div class="gate hidden" id="dd-gate"></div>
+    <div class="msg" id="dd-msg"></div>`;
+  document.getElementById('drawer-foot').innerHTML=`<button class="btn btn-ghost" onclick="closeDrawer()">Cancel</button><button class="btn btn-primary" onclick="drawerAddDevice()">Add device</button>`;
+}
+function drawerGate(){
+  const m=document.getElementById('dd-model').value.trim(), gate=document.getElementById('dd-gate');
+  if(m && !isKnownModel(m)){ gate.classList.remove('hidden'); gate.innerHTML=`<strong>New decoder.</strong> “${esc(m)}” isn't in the supported registry, so it's outside standard (free) onboarding and needs a chargeable decoder before its data will render.<label><input type="checkbox" id="dd-ack"> Onboard anyway and flag as chargeable</label>`; }
+  else gate.classList.add('hidden');
+}
+async function drawerAddDevice(){
+  const msg=document.getElementById('dd-msg'); msg.textContent=''; msg.className='msg';
+  const model=document.getElementById('dd-model').value.trim();
+  if(model && !isKnownModel(model) && !(document.getElementById('dd-ack')&&document.getElementById('dd-ack').checked)){ msg.className='msg err'; msg.textContent=`${model} needs a chargeable decoder — tick the box to onboard anyway.`; return; }
+  const body={ devEui:document.getElementById('dd-eui').value.trim(), customerId:document.getElementById('dd-client').value, sensorId:document.getElementById('dd-sensor').value.trim(), model, name:document.getElementById('dd-name').value.trim() };
+  const res=await authPost('/manage/devices',body); const text=await res.text();
+  if(res.ok){ await loadAll(); closeDrawer(); } else{ msg.className='msg err'; msg.textContent=text||('Failed ('+res.status+')'); }
+}
+
+/* Wizard */
+let WZ={ step:1, client:{}, devices:[] };
+function openWizard(){ WZ={ step:1, client:{}, devices:[] }; document.getElementById('wiz-scrim').classList.add('show'); wizRender(); }
+function closeWizard(){ document.getElementById('wiz-scrim').classList.remove('show'); }
+function wizSetSteps(){ document.querySelectorAll('#wiz-steps .wstep').forEach(s=>{ const n=+s.dataset.s; s.classList.toggle('active',n===WZ.step); s.classList.toggle('done',n<WZ.step); }); }
+function wizRender(){
+  wizSetSteps();
+  const body=document.getElementById('wiz-body'), msg=document.getElementById('wiz-msg'); msg.textContent=''; msg.className='msg';
+  document.getElementById('wiz-back').style.visibility = WZ.step===1?'hidden':'visible';
+  const next=document.getElementById('wiz-next');
+  if(WZ.step===1){
+    next.textContent='Next →';
+    body.innerHTML=`<div class="wiz-intro">Create the client's login. They'll only ever see their own sensors.</div>
+      <div class="form-grid">
+        <div class="field full"><label>Client name</label><input id="wz-name" value="${esc(WZ.client.name||'')}" placeholder="Carne Golf Links" oninput="document.getElementById('wz-id').value=slugify(this.value)"></div>
+        <div class="field"><label>Login ID</label><input id="wz-id" value="${esc(WZ.client.customerId||'')}" placeholder="carne"></div>
+        <div class="field"><label>Role</label><select id="wz-role"><option value="customer">customer</option><option value="admin">admin</option></select></div>
+        <div class="field"><label>Login email</label><input id="wz-email" type="email" value="${esc(WZ.client.email||'')}" placeholder="ops@client.com"></div>
+        <div class="field"><label>Temporary password</label><input id="wz-pass" value="${esc(WZ.client.password||'')}" placeholder="6+ characters"></div>
+      </div>`;
+  } else if(WZ.step===2){
+    next.textContent='Next →';
+    body.innerHTML=`<div class="wiz-intro">Add each sensor for <strong>${esc(WZ.client.name)}</strong>. Grab the DevEUI from The Things Network. You can add several.</div>
+      <div class="form-grid">
+        <div class="field"><label>DevEUI</label><input id="wz-eui" maxlength="16" placeholder="A84041AABBCCDDEE" style="font-family:'IBM Plex Mono',monospace"></div>
+        <div class="field"><label>Model</label><input id="wz-model" list="models" placeholder="CT101" oninput="wizGate()"></div>
+        <div class="field"><label>Sensor ID</label><input id="wz-sensor" placeholder="main-incomer"></div>
+        <div class="field"><label>Friendly name</label><input id="wz-dname" placeholder="Main incomer"></div>
+      </div>
+      <div class="gate hidden" id="wz-gate"></div>
+      <div style="margin-top:14px"><button class="btn-add" onclick="wizAddDevice()">+ Add this sensor</button></div>
+      <div class="chip-list" id="wz-chips"></div>`;
+    wizRenderChips();
+  } else {
+    next.textContent='Finish — create client ✓';
+    const list=WZ.devices.length? WZ.devices.map(d=>`<div class="chip"><span class="chip-name">${esc(d.name||d.sensorId)}</span><span class="mono">${esc(d.sensorId)} · ${esc(d.model)}</span></div>`).join('') : '<div class="empty">No sensors added.</div>';
+    body.innerHTML=`<div class="wiz-intro">Almost done. Here's <strong>${esc(WZ.client.name)}</strong> with ${WZ.devices.length} sensor${WZ.devices.length===1?'':'s'}:</div>
+      <div class="chip-list">${list}</div>
+      <div class="note" style="margin-top:16px">Their dashboard will <strong>automatically show every sensor</strong> as soon as data arrives — nothing else needed to go live. Once readings are flowing you can fine-tune labels, units and alert thresholds anytime in the <strong>Dashboards</strong> tab.</div>
+      <label class="toggle" style="margin-top:16px"><input type="checkbox" id="wz-pdf" checked><span class="track"></span>Give this client a PDF export button</label>`;
+  }
+}
+function wizGate(){ const m=document.getElementById('wz-model').value.trim(), g=document.getElementById('wz-gate');
+  if(m && !isKnownModel(m)){ g.classList.remove('hidden'); g.innerHTML=`<strong>New decoder.</strong> “${esc(m)}” is outside standard (free) onboarding — it'll be flagged as a chargeable decoder.`; } else g.classList.add('hidden'); }
+function wizAddDevice(){
+  const msg=document.getElementById('wiz-msg'); msg.textContent=''; msg.className='msg';
+  const eui=document.getElementById('wz-eui').value.trim().toUpperCase(), model=document.getElementById('wz-model').value.trim(), sensorId=document.getElementById('wz-sensor').value.trim(), name=document.getElementById('wz-dname').value.trim();
+  if(!/^[0-9A-F]{16}$/.test(eui)){ msg.className='msg err'; msg.textContent='DevEUI must be 16 hex characters.'; return; }
+  if(!/^[A-Za-z0-9][A-Za-z0-9-]{0,40}$/.test(sensorId)){ msg.className='msg err'; msg.textContent='Sensor ID must be a short slug.'; return; }
+  if(!model){ msg.className='msg err'; msg.textContent='Enter a model.'; return; }
+  if(WZ.devices.some(d=>d.devEui===eui)){ msg.className='msg err'; msg.textContent='That DevEUI is already in the list.'; return; }
+  WZ.devices.push({ devEui:eui, model, sensorId, name:name||sensorId });
+  ['wz-eui','wz-model','wz-sensor','wz-dname'].forEach(id=>document.getElementById(id).value=''); document.getElementById('wz-gate').classList.add('hidden'); wizRenderChips();
+}
+function wizRenderChips(){ const el=document.getElementById('wz-chips'); if(!el) return;
+  el.innerHTML=WZ.devices.map((d,i)=>`<div class="chip"><span class="chip-name">${esc(d.name)}</span><span class="mono">${esc(d.sensorId)} · ${esc(d.devEui)} · ${esc(d.model)}</span><button class="chip-rm" onclick="WZ.devices.splice(${i},1);wizRenderChips()">×</button></div>`).join(''); }
+function wizBack(){ if(WZ.step>1){ WZ.step--; wizRender(); } }
+async function wizNext(){
+  const msg=document.getElementById('wiz-msg'); msg.textContent=''; msg.className='msg';
+  if(WZ.step===1){
+    const name=document.getElementById('wz-name').value.trim();
+    WZ.client={ name, customerId:document.getElementById('wz-id').value.trim(), email:document.getElementById('wz-email').value.trim(), password:document.getElementById('wz-pass').value, role:document.getElementById('wz-role').value };
+    if(!name){ msg.className='msg err'; msg.textContent='Enter a client name.'; return; }
+    if(!/^[a-z0-9][a-z0-9-]{1,30}$/.test(WZ.client.customerId)){ msg.className='msg err'; msg.textContent='Login ID must be a lowercase slug.'; return; }
+    if(!WZ.client.email || WZ.client.password.length<6){ msg.className='msg err'; msg.textContent='Enter an email and a 6+ character password.'; return; }
+    if(CLIENTS[WZ.client.customerId]){ msg.className='msg err'; msg.textContent='That Login ID already exists.'; return; }
+    WZ.step=2; wizRender();
+  } else if(WZ.step===2){
+    if(!WZ.devices.length){ msg.className='msg err'; msg.textContent='Add at least one sensor (or use Add client if there are none yet).'; return; }
+    WZ.step=3; wizRender();
+  } else { await wizFinish(); }
+}
+async function wizFinish(){
+  const msg=document.getElementById('wiz-msg'), next=document.getElementById('wiz-next'); next.disabled=true; msg.className='msg'; msg.textContent='Creating client…';
+  try{
+    let r=await authPost('/manage/clients',WZ.client); if(!r.ok) throw new Error('Client: '+(await r.text()));
+    for(const d of WZ.devices){ msg.textContent=`Mapping ${d.sensorId}…`; r=await authPost('/manage/devices',{ devEui:d.devEui, customerId:WZ.client.customerId, sensorId:d.sensorId, model:d.model, name:d.name }); if(!r.ok) throw new Error(d.sensorId+': '+(await r.text())); }
+    const pdf=document.getElementById('wz-pdf'); if(pdf && pdf.checked) await authPost('/manage/config',{ customerId:WZ.client.customerId, pdfExport:true, devices:[] });
+    msg.className='msg ok'; msg.textContent='Done!'; await loadAll(); setTimeout(closeWizard,500);
+  }catch(e){ msg.className='msg err'; msg.textContent=e.message; }
+  finally{ next.disabled=false; }
+}
+
+/* Dashboard config (live tick-boxes) */
+function cfgPopulateTenants(){
+  const sel=document.getElementById('cfg-tenant'), prev=sel.value;
+  sel.innerHTML=`<option value="">— select a client —</option>`+Object.entries(CLIENTS).filter(([,c])=>c.role!=='admin').map(([id,c])=>`<option value="${id}">${esc(c.name)} (${id})</option>`).join('');
+  if(prev && CLIENTS[prev]) sel.value=prev;
+}
+async function cfgLoad(){
+  const tenant=document.getElementById('cfg-tenant').value;
+  const editor=document.getElementById('cfg-editor'), ph=document.getElementById('cfg-placeholder'), msg=document.getElementById('cfg-msg'); msg.textContent=''; msg.className='msg';
+  document.getElementById('cfg-reload').disabled=!tenant;
+  if(!tenant){ editor.classList.add('hidden'); ph.classList.remove('hidden'); return; }
+  ph.classList.add('hidden'); editor.classList.remove('hidden');
+  document.getElementById('cfg-devices').innerHTML='<div class="empty">Loading live sensor data…</div>';
+  let cfg=null, readings={};
+  try{
+    const [cRes,rRes]=await Promise.all([ authGet(`/GetConfig?customerId=${encodeURIComponent(tenant)}`), authGet(`/GetReadings?customerId=${encodeURIComponent(tenant)}&hours=720`) ]);
+    if(cRes.status===401||rRes.status===401){ logout(); return; }
+    if(cRes.status!==204 && cRes.ok) cfg=await cRes.json();
+    if(rRes.ok) readings=(await rRes.json()).devices||{};
+  }catch(e){ document.getElementById('cfg-devices').innerHTML='<div class="empty">Couldn’t reach the server.</div>'; return; }
+  document.getElementById('cfg-title').value=(cfg&&cfg.title)||''; document.getElementById('cfg-pdf').checked=!!(cfg&&cfg.pdfExport);
+  const mapped=devicesForClient(tenant).map(([,d])=>d);
+  const cfgBySensor={}; if(cfg&&Array.isArray(cfg.devices)) cfg.devices.forEach(d=>cfgBySensor[d.sensorId]=d);
+  const wrap=document.getElementById('cfg-devices'); wrap.innerHTML='';
+  if(!mapped.length){ wrap.innerHTML='<div class="empty">No devices mapped to this client yet — add some in the Devices tab.</div>'; return; }
+  mapped.forEach(dev=>{ const sid=dev.sensorId; const liveKeys=liveNumericKeys(readings[sid]); const savedDev=cfgBySensor[sid];
+    const savedParams={}; if(savedDev&&Array.isArray(savedDev.params)) savedDev.params.forEach(p=>savedParams[p.key]=p);
+    const keys=Array.from(new Set([...liveKeys, ...Object.keys(savedParams)])); wrap.appendChild(cfgDeviceCard(dev, keys, savedParams, readings[sid])); });
+}
+function liveNumericKeys(arr){ if(!Array.isArray(arr)||!arr.length) return []; const keys=new Set();
+  arr.slice(-8).forEach(r=>{ let p=r.payload||{}; if(p.decoded&&typeof p.decoded==='object') p={...p,...p.decoded}; Object.keys(p).forEach(k=>{ if(typeof p[k]==='number'&&isFinite(p[k])) keys.add(k); }); }); return Array.from(keys); }
+function latestVal(arr,key){ if(!Array.isArray(arr)) return null; for(let i=arr.length-1;i>=0;i--){ let p=arr[i].payload||{}; if(p.decoded&&typeof p.decoded==='object') p={...p,...p.decoded}; const v=p[key]; if(typeof v==='number') return v; } return null; }
+function cfgDeviceCard(dev, keys, savedParams, arr){
+  const el=document.createElement('div'); el.className='cfg-device'; const reporting=Array.isArray(arr)&&arr.length; el.dataset.sensor=dev.sensorId;
+  el.innerHTML=`<div class="cfg-device-head"><span class="cd-name">${esc(dev.name||dev.sensorId)}</span><span class="cd-sub">${esc(dev.sensorId)} · ${esc(dev.model||'')} · ${reporting?'reporting ✓':'no data yet'}</span></div><div class="cfg-fields"></div>`;
+  const fields=el.querySelector('.cfg-fields');
+  if(!keys.length){ fields.innerHTML='<div class="helper" style="padding:10px 0">This sensor hasn’t sent decoded values yet — once it reports, its readings appear here to tick.</div>'; return el; }
+  keys.forEach(k=>{ const sp=savedParams[k]; const on=!!sp; const th=(sp&&sp.thresholds)||{}; const lv=latestVal(arr,k);
+    const row=document.createElement('div'); row.className='fieldrow'+(on?'':' off'); row.dataset.key=k;
+    row.innerHTML=`<label class="chk"><input type="checkbox" ${on?'checked':''} onchange="cfgToggleRow(this)"><span><span class="k">${esc(sp&&sp.label?sp.label:prettify(k))}</span> ${lv!=null?`<span class="kv">now ${fmtNum(lv)}</span>`:''}<br><span class="kv">${esc(k)}</span></span></label>
+      <div class="opts"><input class="lbl-in" data-f="label" placeholder="Label" value="${esc(sp&&sp.label||'')}"><input class="unit-in" data-f="unit" placeholder="Unit" value="${esc(sp&&sp.unit||'')}">
+        <select data-f="chart"><option value="line">line</option><option value="value">value</option><option value="bar">bar</option></select><span class="alert-toggle" onclick="cfgToggleAlert(this)">＋ alert thresholds</span></div>
+      <div class="alert-row hidden"><span class="th amber"><label>amber ≥</label><input data-f="amberAbove" type="number" step="any" value="${th.amberAbove??''}"></span>
+        <span class="th red"><label>red ≥</label><input data-f="redAbove" type="number" step="any" value="${th.redAbove??''}"></span>
+        <span class="th amber"><label>amber ≤</label><input data-f="amberBelow" type="number" step="any" value="${th.amberBelow??''}"></span>
+        <span class="th red"><label>red ≤</label><input data-f="redBelow" type="number" step="any" value="${th.redBelow??''}"></span></div>`;
+    fields.appendChild(row); if(sp&&sp.chart) row.querySelector('[data-f="chart"]').value=sp.chart;
+    if(th.amberAbove!=null||th.redAbove!=null||th.amberBelow!=null||th.redBelow!=null) row.querySelector('.alert-row').classList.remove('hidden'); });
+  return el;
+}
+function cfgToggleRow(cb){ cb.closest('.fieldrow').classList.toggle('off',!cb.checked); }
+function cfgToggleAlert(sp){ sp.closest('.fieldrow').querySelector('.alert-row').classList.toggle('hidden'); }
+function cfgCollect(){
+  const cfg={ customerId:document.getElementById('cfg-tenant').value };
+  const title=document.getElementById('cfg-title').value.trim(); if(title) cfg.title=title; cfg.pdfExport=document.getElementById('cfg-pdf').checked;
+  const devices=[];
+  document.querySelectorAll('#cfg-devices .cfg-device').forEach(dEl=>{ const sensorId=dEl.dataset.sensor; const params=[];
+    dEl.querySelectorAll('.fieldrow').forEach(row=>{ const cb=row.querySelector('.chk input'); if(!cb.checked) return; const key=row.dataset.key; const p={ key };
+      const label=row.querySelector('[data-f="label"]').value.trim(); if(label) p.label=label;
+      const unit=row.querySelector('[data-f="unit"]').value.trim(); if(unit) p.unit=unit;
+      const chart=row.querySelector('[data-f="chart"]').value; if(chart) p.chart=chart;
+      const th={}; ['amberAbove','redAbove','amberBelow','redBelow'].forEach(k=>{ const raw=row.querySelector(`[data-f="${k}"]`).value.trim(); if(raw!==''){ const n=Number(raw); if(isFinite(n)) th[k]=n; } });
+      if(Object.keys(th).length) p.thresholds=th; params.push(p); });
+    if(params.length) devices.push({ sensorId, name:(dEl.querySelector('.cd-name').textContent||sensorId), params }); });
+  cfg.devices=devices; return cfg;
+}
+async function cfgSave(){
+  const msg=document.getElementById('cfg-msg'); msg.textContent=''; msg.className='msg'; const cfg=cfgCollect();
+  if(!cfg.customerId){ msg.className='msg err'; msg.textContent='Pick a client first.'; return; }
+  const res=await authPost('/manage/config',cfg); const text=await res.text();
+  if(res.status===401){ logout(); return; }
+  if(res.ok){ msg.className='msg ok'; msg.textContent=`Saved — ${cfg.devices.length} device${cfg.devices.length===1?'':'s'} live. The client sees it on next refresh.`; }
+  else{ msg.className='msg err'; msg.textContent=text||('Failed ('+res.status+')'); }
+}
+function prettify(k){ return k.replace(/_/g,' ').replace(/([a-z])([A-Z])/g,'$1 $2').replace(/\b\w/g,c=>c.toUpperCase()); }
+function fmtNum(v){ return Number.isInteger(v)?v:(+v).toFixed(2); }
+</script>
+</body>
+</html>
