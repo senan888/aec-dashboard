@@ -3,767 +3,566 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Atlantic Energy — Sensor Monitor</title>
+<title>Atlantic Energy — Monitor (Dark)</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@300;400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js"></script>
 <style>
-  *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
-
-  :root {
-    --navy: #0a2540;
-    --navy-mid: #0e3460;
-    --teal: #0e9f8e;
-    --teal-light: #13c4b0;
-    --bg: #f0f4f8;
-    --surface: #ffffff;
-    --border: #e2e8f0;
-    --text: #1a202c;
-    --text-mid: #4a5568;
-    --text-soft: #718096;
-    --ok: #38a169;
-    --warn: #d69e2e;
-    --alert: #e53e3e;
-    --ok-bg: #f0fff4;
-    --warn-bg: #fffff0;
-    --alert-bg: #fff5f5;
-    --ok-border: #9ae6b4;
-    --warn-border: #faf089;
-    --alert-border: #fed7d7;
+  *,*::before,*::after{ margin:0; padding:0; box-sizing:border-box; }
+  :root{
+    --bg:#0a1622; --sidebar:#0b1a2b; --surface:#0f2338; --surface-2:#13293f; --surface-3:#17324c;
+    --border:rgba(148,175,209,0.13); --border-2:rgba(148,175,209,0.22);
+    --text:#e7eef6; --text-mid:#9db2c9; --text-soft:#6b8299;
+    --teal:#16c8b4; --teal-light:#2ee6d2; --teal-dim:rgba(22,200,180,0.14);
+    --ok:#37d17f; --ok-bg:rgba(55,209,127,0.13); --ok-bd:rgba(55,209,127,0.32);
+    --warn:#f5b13f; --warn-bg:rgba(245,177,63,0.13); --warn-bd:rgba(245,177,63,0.34);
+    --alert:#ff6058; --alert-bg:rgba(255,96,88,0.13); --alert-bd:rgba(255,96,88,0.36);
+    --shadow:0 2px 6px rgba(0,0,0,0.3), 0 12px 34px rgba(0,0,0,0.34);
   }
+  body{ font-family:'IBM Plex Sans',sans-serif; background:var(--bg); color:var(--text); min-height:100vh; -webkit-font-smoothing:antialiased; }
+  .mono{ font-family:'IBM Plex Mono',monospace; } .hidden{ display:none !important; }
+  ::-webkit-scrollbar{ width:10px; height:10px; } ::-webkit-scrollbar-thumb{ background:var(--surface-3); border-radius:6px; } ::-webkit-scrollbar-track{ background:transparent; }
 
-  body { font-family: 'IBM Plex Sans', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+  /* Login */
+  #login-screen{ position:fixed; inset:0; z-index:60; display:flex; align-items:center; justify-content:center; background:radial-gradient(1100px 560px at 60% -10%, #123b5c 0%, #0a1622 60%); }
+  .login-card{ background:var(--surface); border:1px solid var(--border); border-radius:16px; padding:38px 36px; width:380px; box-shadow:var(--shadow); }
+  .login-logo{ display:flex; align-items:center; gap:11px; margin-bottom:24px; }
+  .mark{ width:38px; height:38px; border-radius:10px; background:linear-gradient(135deg,var(--teal),var(--teal-light)); display:flex; align-items:center; justify-content:center; box-shadow:0 6px 18px rgba(22,200,180,0.35); }
+  .mark svg{ width:22px; height:22px; }
+  .login-brand{ font-size:17px; font-weight:600; } .login-sub{ font-size:10.5px; font-weight:500; color:var(--teal-light); letter-spacing:0.09em; text-transform:uppercase; }
+  .field label{ display:block; font-size:11px; color:var(--text-soft); margin-bottom:6px; }
+  .field input{ width:100%; padding:11px 13px; background:var(--surface-2); border:1px solid var(--border); border-radius:9px; color:var(--text); font-family:inherit; font-size:14px; }
+  .field input:focus{ outline:none; border-color:var(--teal); box-shadow:0 0 0 3px var(--teal-dim); }
+  .login-btn{ width:100%; margin-top:12px; padding:12px; background:var(--teal); color:#04201c; border:none; border-radius:9px; font-family:inherit; font-size:14px; font-weight:700; cursor:pointer; }
+  .login-btn:hover{ background:var(--teal-light); }
+  .login-error{ color:var(--alert); font-size:12px; margin-top:12px; min-height:16px; }
+  .login-hint{ margin-top:16px; font-size:11px; color:var(--text-soft); text-align:center; }
 
-  /* ── Header ── */
-  header {
-    background: var(--navy); color: white; padding: 0 32px;
-    display: flex; justify-content: space-between; align-items: stretch; height: 60px;
-  }
-  .header-left { display: flex; align-items: center; gap: 28px; }
-  .brand { display: flex; flex-direction: column; justify-content: center; border-right: 1px solid rgba(255,255,255,0.12); padding-right: 28px; }
-  .brand-name { font-size: 14px; font-weight: 600; color: white; letter-spacing: 0.01em; line-height: 1.2; }
-  .brand-sub  { font-size: 10px; font-weight: 400; color: var(--teal-light); letter-spacing: 0.08em; text-transform: uppercase; }
+  /* App shell */
+  .shell{ display:flex; min-height:100vh; }
+  .sidebar{ width:248px; flex:none; background:var(--sidebar); border-right:1px solid var(--border); display:flex; flex-direction:column; position:sticky; top:0; height:100vh; }
+  .sb-brand{ display:flex; align-items:center; gap:11px; padding:18px 20px; border-bottom:1px solid var(--border); }
+  .sb-brand .mark{ width:34px; height:34px; }
+  .sb-bname{ font-size:14px; font-weight:600; } .sb-bsub{ font-size:9.5px; color:var(--teal-light); letter-spacing:0.1em; text-transform:uppercase; }
+  .sb-tenant{ padding:14px 20px 10px; }
+  .sb-tenant .t-name{ font-size:13px; font-weight:600; } .sb-tenant .t-meta{ font-size:11px; color:var(--text-soft); margin-top:2px; }
+  .sb-scroll{ flex:1; overflow-y:auto; padding:6px 12px 12px; }
+  .sb-label{ font-size:9.5px; text-transform:uppercase; letter-spacing:0.1em; color:var(--text-soft); font-weight:600; padding:12px 10px 7px; }
+  .nav-item{ display:flex; align-items:center; gap:10px; padding:9px 11px; border-radius:9px; cursor:pointer; font-size:13px; color:var(--text-mid); transition:background .12s,color .12s; }
+  .nav-item:hover{ background:var(--surface); color:var(--text); }
+  .nav-item.active{ background:var(--teal-dim); color:var(--text); font-weight:500; }
+  .nav-item svg{ width:16px; height:16px; flex:none; }
+  .nav-item .n-dot{ width:8px; height:8px; border-radius:50%; flex:none; }
+  .n-dot.ok{ background:var(--ok); } .n-dot.amber{ background:var(--warn); } .n-dot.red{ background:var(--alert); box-shadow:0 0 7px var(--alert); } .n-dot.off{ background:var(--text-soft); opacity:0.5; }
+  .nav-item .n-name{ flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .nav-item .n-val{ font-family:'IBM Plex Mono',monospace; font-size:11px; color:var(--text-soft); }
+  .sb-search-wrap{ padding:6px 4px 8px; }
+  .sb-search{ width:100%; padding:8px 11px 8px 30px; background:var(--surface); border:1px solid var(--border); border-radius:8px; color:var(--text); font-family:inherit; font-size:12.5px;
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%236b8299' stroke-width='2'%3E%3Ccircle cx='11' cy='11' r='7'/%3E%3Cpath d='M21 21l-4-4'/%3E%3C/svg%3E"); background-repeat:no-repeat; background-position:9px center; background-size:14px; }
+  .sb-search:focus{ outline:none; border-color:var(--teal); } .sb-search::placeholder{ color:var(--text-soft); }
+  .dev-row-item{ flex-direction:column; align-items:stretch; gap:5px; padding:8px 11px; }
+  .dri-top{ display:flex; align-items:center; gap:10px; }
+  .dri-top .n-name{ flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .dri-spark{ height:24px; opacity:0.92; }
+  .sb-foot{ border-top:1px solid var(--border); padding:12px; display:flex; flex-direction:column; gap:4px; }
+  .sb-btn{ display:flex; align-items:center; gap:9px; padding:9px 11px; border-radius:9px; cursor:pointer; font-size:12.5px; color:var(--text-mid); background:none; border:none; font-family:inherit; text-align:left; width:100%; }
+  .sb-btn:hover{ background:var(--surface); color:var(--text); }
+  .sb-btn svg{ width:15px; height:15px; }
 
-  nav { display: flex; align-items: stretch; gap: 2px; }
-  .tab-btn {
-    background: none; border: none; color: rgba(255,255,255,0.55);
-    font-family: 'IBM Plex Sans', sans-serif; font-size: 13px; font-weight: 500;
-    padding: 0 18px; cursor: pointer; border-bottom: 2px solid transparent;
-    transition: color 0.15s, border-color 0.15s; letter-spacing: 0.01em;
-  }
-  .tab-btn:hover  { color: rgba(255,255,255,0.85); }
-  .tab-btn.active { color: white; border-bottom-color: var(--teal-light); }
+  /* Main */
+  .main{ flex:1; min-width:0; display:flex; flex-direction:column; }
+  .topbar{ height:60px; border-bottom:1px solid var(--border); display:flex; align-items:center; justify-content:space-between; padding:0 26px; position:sticky; top:0; background:rgba(10,22,34,0.85); backdrop-filter:blur(8px); z-index:20; }
+  .tb-title{ font-size:16px; font-weight:600; } .tb-sub{ font-size:11px; color:var(--text-soft); margin-top:1px; }
+  .tb-right{ display:flex; align-items:center; gap:12px; }
+  .live-tag{ display:flex; align-items:center; gap:7px; font-size:12px; color:var(--text-mid); padding:5px 11px; background:var(--surface); border:1px solid var(--border); border-radius:20px; }
+  .live-dot{ width:7px; height:7px; background:var(--ok); border-radius:50%; animation:pulse 2s ease-in-out infinite; }
+  .live-dot.stale{ background:var(--alert); animation:none; }
+  @keyframes pulse{ 0%{box-shadow:0 0 0 0 rgba(55,209,127,0.5);} 70%{box-shadow:0 0 0 6px rgba(55,209,127,0);} 100%{box-shadow:0 0 0 0 rgba(55,209,127,0);} }
+  .countdown{ font-family:'IBM Plex Mono',monospace; font-size:11px; color:var(--text-soft); }
+  .range-toggle{ display:inline-flex; background:var(--surface); border:1px solid var(--border); border-radius:9px; padding:3px; gap:2px; }
+  .range-btn{ background:none; border:none; font-family:inherit; font-size:12px; font-weight:500; color:var(--text-soft); padding:6px 12px; border-radius:6px; cursor:pointer; }
+  .range-btn:hover{ color:var(--text); } .range-btn.active{ background:var(--teal); color:#04201c; }
+  .tb-btn{ background:var(--surface); border:1px solid var(--border); color:var(--text-mid); border-radius:8px; padding:7px 12px; font-family:inherit; font-size:12px; cursor:pointer; display:inline-flex; align-items:center; gap:6px; }
+  .tb-btn:hover{ border-color:var(--teal); color:var(--text); } .tb-btn svg{ width:14px; height:14px; }
+  .content{ padding:22px 26px 60px; overflow-y:auto; }
 
-  .header-right { display: flex; align-items: center; gap: 14px; font-size: 12px; }
-  .header-clock { opacity: 0.65; font-family: 'IBM Plex Mono', monospace; }
-  .live-tag { display: flex; align-items: center; gap: 7px; color: rgba(255,255,255,0.8); }
-  .live-dot { width: 7px; height: 7px; background: #48bb78; border-radius: 50%; animation: pulse 2s ease-in-out infinite; }
-  @keyframes pulse { 0%,100% { opacity:1; } 50% { opacity:0.35; } }
+  /* Health banner */
+  .health{ border-radius:14px; padding:16px 20px; margin-bottom:18px; display:flex; align-items:center; gap:14px; border:1px solid var(--border); background:var(--surface); }
+  .health .hicon{ width:40px; height:40px; border-radius:11px; display:flex; align-items:center; justify-content:center; flex:none; }
+  .health .htext .h1{ font-size:16px; font-weight:600; } .health .htext .h2{ font-size:12px; color:var(--text-soft); margin-top:2px; }
+  .health.ok{ background:linear-gradient(90deg,var(--ok-bg),transparent 60%); border-color:var(--ok-bd); }
+  .health.ok .hicon{ background:var(--ok-bg); color:var(--ok); }
+  .health.amber{ background:linear-gradient(90deg,var(--warn-bg),transparent 60%); border-color:var(--warn-bd); }
+  .health.amber .hicon{ background:var(--warn-bg); color:var(--warn); }
+  .health.red{ background:linear-gradient(90deg,var(--alert-bg),transparent 60%); border-color:var(--alert-bd); }
+  .health.red .hicon{ background:var(--alert-bg); color:var(--alert); }
+  .health svg{ width:22px; height:22px; }
+  .health .hlist{ margin-left:auto; font-size:12px; color:var(--text-mid); text-align:right; line-height:1.5; max-width:46%; }
 
-  /* ── Layout ── */
-  .page { display: none; }
-  .page.active { display: block; }
-  .container { max-width: 1400px; margin: 0 auto; padding: 26px 32px 60px; }
+  /* KPI */
+  .kpi-row{ display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:14px; margin-bottom:20px; }
+  .kpi{ background:var(--surface); border:1px solid var(--border); border-radius:13px; padding:16px 18px; position:relative; overflow:hidden; }
+  .kpi::before{ content:''; position:absolute; left:0; top:0; bottom:0; width:3px; background:var(--teal); }
+  .kpi.k-ok::before{ background:var(--ok); } .kpi.k-warn::before{ background:var(--warn); } .kpi.k-alert::before{ background:var(--alert); }
+  .kpi-label{ font-size:11px; color:var(--text-soft); font-weight:500; text-transform:uppercase; letter-spacing:0.05em; }
+  .kpi-value{ font-size:30px; font-weight:600; font-family:'IBM Plex Mono',monospace; margin-top:6px; line-height:1; }
+  .kpi-value small{ font-size:14px; color:var(--text-soft); }
+  .kpi-foot{ font-size:11px; color:var(--text-soft); margin-top:7px; }
+  .kpi.k-ok .kpi-value{ color:var(--ok); } .kpi.k-warn .kpi-value{ color:var(--warn); } .kpi.k-alert .kpi-value{ color:var(--alert); }
 
-  .section-title {
-    font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.1em;
-    color: var(--text-soft); margin-bottom: 14px; margin-top: 34px;
-  }
-  .section-title:first-child { margin-top: 0; }
+  .section-title{ font-size:10px; font-weight:600; text-transform:uppercase; letter-spacing:0.1em; color:var(--text-soft); margin:22px 2px 13px; }
 
-  /* ── Filter pills ── */
-  .filter-row { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 4px; }
-  .pill {
-    background: var(--surface); border: 1px solid var(--border); border-radius: 20px;
-    padding: 6px 15px; font-family: 'IBM Plex Sans', sans-serif; font-size: 12px; font-weight: 500;
-    color: var(--text-mid); cursor: pointer; transition: all 0.15s;
-  }
-  .pill:hover { border-color: var(--teal); color: var(--text); }
-  .pill.active { background: var(--navy); color: white; border-color: var(--navy); }
+  /* Charts */
+  .charts-grid{ display:grid; grid-template-columns:repeat(auto-fit,minmax(440px,1fr)); gap:16px; }
+  .chart-card{ background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:16px 18px 12px; }
+  .chart-head{ display:flex; justify-content:space-between; align-items:flex-start; gap:10px; margin-bottom:4px; }
+  .chart-title{ font-size:14px; font-weight:600; } .chart-sub{ font-size:11px; color:var(--text-soft); margin-top:2px; }
+  .ic-btn{ background:var(--surface-2); border:1px solid var(--border); border-radius:7px; padding:5px 9px; cursor:pointer; color:var(--text-soft); display:flex; align-items:center; gap:4px; font-size:11px; font-family:inherit; }
+  .ic-btn:hover{ border-color:var(--teal); color:var(--teal); } .ic-btn svg{ width:13px; height:13px; }
+  .legend{ display:flex; gap:14px; flex-wrap:wrap; margin:6px 0 4px; }
+  .legend-item{ display:flex; align-items:center; gap:6px; font-size:11px; color:var(--text-mid); cursor:pointer; user-select:none; transition:opacity .12s; }
+  .legend-item:hover{ color:var(--text); } .legend-item.off{ opacity:0.38; text-decoration:line-through; }
+  .legend-dot{ width:9px; height:9px; border-radius:50%; flex:none; }
+  .chart-area svg{ display:block; width:100%; }
+  .grid line{ stroke:var(--border); stroke-opacity:0.6; shape-rendering:crispEdges; }
+  .axis text{ fill:var(--text-soft); font-size:10px; font-family:'IBM Plex Mono',monospace; }
+  .axis path,.axis line{ stroke:var(--border); }
+  .thline{ stroke-dasharray:4 3; stroke-width:1; opacity:0.6; fill:none; }
+  .crosshair{ stroke:var(--text-soft); stroke-width:1; stroke-dasharray:3 3; opacity:0; }
+  .tooltip{ position:fixed; background:#050d16; border:1px solid var(--border-2); color:#fff; padding:8px 11px; border-radius:8px; font-size:11px; pointer-events:none; opacity:0; transition:opacity .1s; z-index:1000; box-shadow:0 8px 22px rgba(0,0,0,0.5); min-width:130px; }
+  .tooltip .tt-time{ color:var(--teal-light); font-family:'IBM Plex Mono',monospace; margin-bottom:5px; font-size:10.5px; }
+  .tooltip .tt-row{ display:flex; justify-content:space-between; gap:14px; font-family:'IBM Plex Mono',monospace; }
+  .tooltip .tt-nm{ display:flex; align-items:center; gap:6px; } .tt-dot{ width:8px; height:8px; border-radius:50%; }
 
-  /* ── Metric grid ── */
-  .metric-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; }
-  .metric-card { background: var(--surface); border-radius: 10px; padding: 18px 20px; border: 1px solid var(--border); }
-  .metric-label  { font-size: 11px; color: var(--text-soft); margin-bottom: 8px; font-weight: 500; }
-  .metric-value  { font-size: 26px; font-weight: 600; color: var(--text); line-height: 1; font-family: 'IBM Plex Mono', monospace; }
-  .metric-unit   { font-size: 13px; font-weight: 400; color: var(--text-soft); }
-  .metric-status { font-size: 11px; margin-top: 7px; }
-  .ok { color: var(--ok); } .warn { color: var(--warn); } .alert { color: var(--alert); }
+  /* Device drill-down */
+  .dev-hero{ display:flex; align-items:center; gap:16px; background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:18px 20px; margin-bottom:18px; }
+  .dev-hero .dh-ic{ width:46px; height:46px; border-radius:12px; background:var(--surface-3); display:flex; align-items:center; justify-content:center; flex:none; }
+  .dev-hero .dh-ic svg{ width:24px; height:24px; }
+  .dev-hero .dh-name{ font-size:18px; font-weight:600; } .dev-hero .dh-sub{ font-size:12px; color:var(--text-soft); margin-top:3px; }
+  .badge{ margin-left:auto; font-size:11px; padding:5px 12px; border-radius:20px; font-weight:600; letter-spacing:0.04em; text-transform:uppercase; }
+  .badge-ok{ background:var(--ok-bg); color:var(--ok); border:1px solid var(--ok-bd); }
+  .badge-warn{ background:var(--warn-bg); color:var(--warn); border:1px solid var(--warn-bd); }
+  .badge-alert{ background:var(--alert-bg); color:var(--alert); border:1px solid var(--alert-bd); }
+  .badge-off{ background:var(--surface-2); color:var(--text-soft); border:1px solid var(--border); }
+  .val-row{ display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:12px; margin-bottom:20px; }
+  .val-tile{ background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:14px 16px; }
+  .val-tile.s-amber{ border-color:var(--warn-bd); } .val-tile.s-red{ border-color:var(--alert-bd); }
+  .val-tile .vl{ font-size:11px; color:var(--text-soft); display:flex; align-items:center; gap:6px; }
+  .val-tile .vv{ font-size:23px; font-weight:600; font-family:'IBM Plex Mono',monospace; margin-top:5px; }
+  .val-tile .vv small{ font-size:12px; color:var(--text-soft); }
+  .val-tile.s-amber .vv{ color:var(--warn); } .val-tile.s-red .vv{ color:var(--alert); }
+  .rdot{ width:7px; height:7px; border-radius:50%; } .rdot.amber{ background:var(--warn); } .rdot.red{ background:var(--alert); }
 
-  /* ── Alert banner ── */
-  .alert-banner {
-    background: var(--warn-bg); border: 1px solid var(--warn-border); border-radius: 8px;
-    padding: 11px 16px; display: flex; justify-content: space-between; align-items: center; margin-top: 10px;
-  }
-  .alert-banner-text { font-size: 13px; color: #744210; font-weight: 500; }
-  .alert-banner-time { font-size: 11px; color: var(--warn); font-family: 'IBM Plex Mono', monospace; }
+  .empty,.error-box{ background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:48px; text-align:center; color:var(--text-soft); font-size:14px; }
+  .error-box{ border-color:var(--alert-bd); color:var(--alert); }
+  .skeleton{ background:linear-gradient(90deg,var(--surface) 25%,var(--surface-2) 50%,var(--surface) 75%); background-size:200% 100%; animation:shimmer 1.3s infinite; border-radius:14px; height:150px; }
+  @keyframes shimmer{ 0%{background-position:200% 0;} 100%{background-position:-200% 0;} }
 
-  /* ── Cards / charts ── */
-  .card-grid-2 { display: grid; grid-template-columns: 1.35fr 1fr; gap: 16px; }
-  .card-grid-3 { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 16px; }
-  .card { background: var(--surface); border-radius: 12px; padding: 20px; border: 1px solid var(--border); }
-  .card-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
-  .card-title { font-size: 15px; font-weight: 600; }
-  .card-sub { font-size: 11px; color: var(--text-soft); }
-
-  .range-toggle { display: inline-flex; background: var(--bg); border-radius: 7px; padding: 3px; gap: 2px; }
-  .range-btn {
-    background: none; border: none; font-family: 'IBM Plex Sans', sans-serif; font-size: 11px; font-weight: 500;
-    color: var(--text-soft); padding: 4px 10px; border-radius: 5px; cursor: pointer; transition: all 0.15s;
-  }
-  .range-btn:hover { color: var(--text); }
-  .range-btn.active { background: var(--surface); color: var(--text); box-shadow: 0 1px 3px rgba(0,0,0,0.08); }
-
-  .legend { display: flex; gap: 16px; margin: 10px 0 2px; flex-wrap: wrap; }
-  .legend-item { display: flex; align-items: center; gap: 6px; font-size: 11px; color: var(--text-mid); }
-  .legend-swatch { width: 11px; height: 3px; border-radius: 2px; }
-
-  .th-selector { display: flex; gap: 6px; margin: 12px 0 2px; flex-wrap: wrap; }
-  .th-pill {
-    background: var(--bg); border: 1px solid transparent; border-radius: 6px;
-    font-family: 'IBM Plex Sans', sans-serif; font-size: 11px; font-weight: 500;
-    color: var(--text-soft); padding: 4px 11px; cursor: pointer; transition: all 0.15s;
-  }
-  .th-pill:hover { color: var(--text); }
-  .th-pill.active { background: var(--navy); color: white; }
-
-  /* ── D3 axis ── */
-  .axis text { font-size: 10px; fill: var(--text-soft); font-family: 'IBM Plex Mono', monospace; }
-  .axis path, .axis line { stroke: var(--border); }
-  .grid line { stroke: #edf2f7; }
-  .grid path { stroke: none; }
-  .chart-tooltip {
-    position: absolute; pointer-events: none; background: var(--navy); color: white;
-    padding: 7px 10px; border-radius: 6px; font-size: 11px; font-family: 'IBM Plex Mono', monospace;
-    opacity: 0; transition: opacity 0.1s; white-space: nowrap; z-index: 50; line-height: 1.5;
-  }
-
-  /* ── Device status table ── */
-  .status-table { width: 100%; border-collapse: collapse; }
-  .status-table th {
-    text-align: left; font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em;
-    color: var(--text-soft); padding: 8px 10px; border-bottom: 1px solid var(--border);
-  }
-  .status-table td { padding: 10px; font-size: 13px; border-bottom: 1px solid #f7fafc; }
-  .status-table tr:last-child td { border-bottom: none; }
-  .dev-name { font-weight: 500; font-family: 'IBM Plex Mono', monospace; font-size: 12px; }
-  .dev-type { font-size: 11px; color: var(--text-soft); }
-  .status-dot { display: inline-flex; align-items: center; gap: 7px; font-size: 12px; }
-  .dot { width: 8px; height: 8px; border-radius: 50%; }
-  .dot-ok { background: var(--ok); } .dot-warn { background: var(--warn); } .dot-alert { background: var(--alert); }
-  .signal-bars { display: inline-flex; gap: 2px; align-items: flex-end; height: 12px; }
-  .signal-bars span { width: 3px; background: var(--border); border-radius: 1px; }
-  .signal-bars span.on { background: var(--teal); }
-
-  /* ── Gauge / battery ── */
-  .battery-row { display: flex; align-items: center; gap: 10px; padding: 7px 0; }
-  .battery-name { font-size: 12px; font-family: 'IBM Plex Mono', monospace; width: 120px; color: var(--text-mid); }
-  .battery-track { flex: 1; height: 8px; background: var(--bg); border-radius: 4px; overflow: hidden; }
-  .battery-fill { height: 100%; border-radius: 4px; }
-  .battery-val { font-size: 12px; font-family: 'IBM Plex Mono', monospace; width: 52px; text-align: right; color: var(--text-mid); }
-
-  .leak-state { display: flex; align-items: center; gap: 12px; margin-top: 4px; }
-  .leak-indicator { width: 54px; height: 54px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 22px; }
-  .leak-ok { background: var(--ok-bg); border: 2px solid var(--ok-border); }
-  .leak-text-main { font-size: 15px; font-weight: 600; }
-  .leak-text-sub { font-size: 11px; color: var(--text-soft); }
-
-  /* ── Locked Phase-2 tile ── */
-  .locked-tile {
-    background: linear-gradient(135deg, #0a2540 0%, #0e3460 100%); color: white; border-radius: 12px;
-    padding: 22px; position: relative; overflow: hidden; display: flex; flex-direction: column; justify-content: space-between; min-height: 150px;
-  }
-  .locked-badge { font-size: 10px; text-transform: uppercase; letter-spacing: 0.1em; color: var(--teal-light); font-weight: 600; }
-  .locked-title { font-size: 17px; font-weight: 600; margin-top: 8px; }
-  .locked-desc { font-size: 12px; color: rgba(255,255,255,0.6); margin-top: 6px; line-height: 1.5; max-width: 80%; }
-  .locked-lock { position: absolute; top: 18px; right: 20px; font-size: 20px; opacity: 0.5; }
-
-  .footer-note { margin-top: 40px; font-size: 11px; color: var(--text-soft); text-align: center; }
+  /* Modal */
+  .modal-scrim{ position:fixed; inset:0; background:rgba(3,9,16,0.72); backdrop-filter:blur(4px); z-index:80; display:none; align-items:center; justify-content:center; padding:26px; }
+  .modal-scrim.show{ display:flex; }
+  .modal{ background:var(--surface); border:1px solid var(--border); border-radius:16px; width:1040px; max-width:100%; max-height:92vh; overflow:auto; box-shadow:var(--shadow); }
+  .modal-sm{ width:460px; }
+  .modal-head{ display:flex; justify-content:space-between; align-items:center; padding:20px 24px; border-bottom:1px solid var(--border); }
+  .modal-head h3{ font-size:16px; font-weight:600; } .modal-head .sub{ font-size:12px; color:var(--text-soft); margin-top:2px; }
+  .modal-x{ background:var(--surface-2); border:1px solid var(--border); border-radius:8px; padding:8px 13px; cursor:pointer; font-size:13px; color:var(--text-mid); font-family:inherit; }
+  .modal-body{ padding:22px 24px; }
+  .pdf-grid{ display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-bottom:18px; }
+  .pdf-grid .full{ grid-column:1/-1; }
+  .pdf-grid label{ display:block; font-size:11px; font-weight:600; color:var(--text-soft); text-transform:uppercase; letter-spacing:0.05em; margin-bottom:5px; }
+  .pdf-grid input{ width:100%; padding:9px 11px; background:var(--surface-2); border:1px solid var(--border); border-radius:8px; color:var(--text); font-family:inherit; font-size:13px; }
+  .pdf-sensors{ margin-bottom:18px; }
+  .pdf-sensors-head{ display:flex; justify-content:space-between; align-items:center; font-size:11px; font-weight:600; color:var(--text-soft); text-transform:uppercase; letter-spacing:0.05em; margin-bottom:8px; }
+  .pdf-sel-actions a{ color:var(--teal); cursor:pointer; text-transform:none; letter-spacing:0; font-weight:500; }
+  #pdf-sensor-list{ max-height:170px; overflow-y:auto; border:1px solid var(--border); border-radius:8px; padding:6px 10px; }
+  .pdf-chk{ display:flex; align-items:center; gap:9px; font-size:12.5px; padding:5px 4px; cursor:pointer; color:var(--text); }
+  .pdf-chk input{ width:15px; height:15px; accent-color:var(--teal); }
+  .pdf-chk .mono{ color:var(--text-soft); font-size:11px; margin-left:auto; }
+  .btn{ padding:10px 16px; border:none; border-radius:9px; font-family:inherit; font-size:13px; font-weight:600; cursor:pointer; }
+  .btn-primary{ background:var(--teal); color:#04201c; } .btn-ghost{ background:var(--surface-2); border:1px solid var(--border); color:var(--text-mid); }
 </style>
 </head>
 <body>
 
-<header>
-  <div class="header-left">
-    <div class="brand">
-      <div class="brand-name">Atlantic Energy</div>
-      <div class="brand-sub">Sensor Platform</div>
+<!-- LOGIN -->
+<div id="login-screen">
+  <div class="login-card">
+    <div class="login-logo">
+      <div class="mark"><svg viewBox="0 0 24 24" fill="none"><path d="M13 2L4.5 13H11l-1 9 8.5-11H12l1-9z" fill="#04201c"/></svg></div>
+      <div><div class="login-brand">Atlantic Energy</div><div class="login-sub">Sensor Monitor</div></div>
     </div>
-    <nav>
-      <button class="tab-btn active" onclick="showTab('overview',this)">Overview</button>
-      <button class="tab-btn" onclick="showTab('devices',this)">Devices</button>
-    </nav>
-  </div>
-  <div class="header-right">
-    <span class="live-tag"><span class="live-dot"></span><span id="src-tag">Live</span></span>
-    <span class="header-clock" id="clock">—</span>
-  </div>
-</header>
-
-<!-- ══════════ OVERVIEW ══════════ -->
-<div class="page active" id="overview">
-  <div class="container">
-
-    <div class="filter-row" id="filter-row"></div>
-
-    <div class="section-title">Fleet summary</div>
-    <div class="metric-grid" id="kpi-grid"></div>
-    <div id="alert-zone"></div>
-
-    <div class="section-title">Environment</div>
-    <div class="card-grid-2">
-      <div class="card">
-        <div class="card-head">
-          <div><div class="card-title">Temperature &amp; Humidity</div><div class="card-sub" id="th-sub">MClimate sensors — fleet average</div></div>
-          <div class="range-toggle">
-            <button class="range-btn active" onclick="setRange('th',24,this)">24h</button>
-            <button class="range-btn" onclick="setRange('th',48,this)">48h</button>
-          </div>
-        </div>
-        <div class="th-selector">
-          <button class="th-pill active" onclick="setTHSensor('avg',this)">Average</button>
-          <button class="th-pill" onclick="setTHSensor('all',this)">All</button>
-          <button class="th-pill" onclick="setTHSensor('mclimate-ht1',this)">HT1</button>
-          <button class="th-pill" onclick="setTHSensor('mclimate-ht2',this)">HT2</button>
-          <button class="th-pill" onclick="setTHSensor('mclimate-ht3',this)">HT3</button>
-          <button class="th-pill" onclick="setTHSensor('mclimate-ht4',this)">HT4</button>
-          <button class="th-pill" onclick="setTHSensor('am307',this)">AM307</button>
-        </div>
-        <div class="legend">
-          <div class="legend-item"><span class="legend-swatch" style="background:#0e9f8e"></span>Temperature (°C)</div>
-          <div class="legend-item"><span class="legend-swatch" style="background:#3182ce"></span>Humidity (%)</div>
-        </div>
-        <div id="th-chart"></div>
-      </div>
-      <div class="card">
-        <div class="card-head"><div class="card-title">Device activity</div><div class="card-sub" id="dev-count-sub"></div></div>
-        <table class="status-table" id="mini-status"></table>
-      </div>
-    </div>
-
-    <div class="section-title">Energy &amp; load</div>
-    <div class="card-grid-2">
-      <div class="card">
-        <div class="card-head">
-          <div><div class="card-title">Power consumption</div><div class="card-sub" id="pw-sub">Netvox R809 — cumulative energy draw</div></div>
-          <div class="range-toggle">
-            <button class="range-btn active" onclick="setRange('energy',24,this)">24h</button>
-            <button class="range-btn" onclick="setRange('energy',48,this)">48h</button>
-          </div>
-        </div>
-        <div class="th-selector">
-          <button class="th-pill active" onclick="setPowerSensor('netvox-r809',this)">R809 energy</button>
-          <button class="th-pill" onclick="setPowerSensor('ct101-1',this)">CT101-1</button>
-          <button class="th-pill" onclick="setPowerSensor('ct101-2',this)">CT101-2</button>
-          <button class="th-pill" onclick="setPowerSensor('netvox-r718n17',this)">R718N17</button>
-        </div>
-        <div id="energy-chart"></div>
-      </div>
-      <div class="card">
-        <div class="card-head"><div class="card-title">Current weight</div><div class="card-sub">Load cell — LCC01-LB</div></div>
-        <div id="weight-gauge" style="display:flex;justify-content:center;padding-top:6px;"></div>
-      </div>
-    </div>
-
-    <div class="section-title">Water &amp; power quality</div>
-    <div class="card-grid-3">
-      <div class="card">
-        <div class="card-head"><div class="card-title">Water volume</div><div class="card-sub">CubicMeter — total litres</div></div>
-        <div id="water-chart"></div>
-      </div>
-      <div class="card">
-        <div class="card-head"><div class="card-title">Leak status</div><div class="card-sub">CubicMeter</div></div>
-        <div class="leak-state">
-          <div class="leak-indicator leak-ok">💧</div>
-          <div><div class="leak-text-main ok">No leak detected</div><div class="leak-text-sub">Sensing active · error code 0</div></div>
-        </div>
-        <div style="margin-top:18px;">
-          <div class="card-sub" style="margin-bottom:8px;">Ambient water temp</div>
-          <div class="metric-value" style="font-size:22px;">22.4<span class="metric-unit"> °C</span></div>
-        </div>
-      </div>
-      <div class="locked-tile">
-        <div class="locked-lock">🔒</div>
-        <div><div class="locked-badge">Phase 2</div><div class="locked-title">Carne Golf Links</div><div class="locked-desc">GPS soil-moisture heatmap &amp; course map — available in the next phase.</div></div>
-        <div class="card-sub" style="color:rgba(255,255,255,0.45);">Migration from ThingsBoard</div>
-      </div>
-    </div>
-
-    <div class="section-title">Battery health</div>
-    <div class="card">
-      <div id="battery-list"></div>
-    </div>
-
-    <div class="footer-note">Atlantic Energy Sensor Platform · LoRaWAN → The Things Network → Azure · 11 devices</div>
+    <div class="field" style="margin-bottom:15px"><label>Email</label><input id="email" type="email" value="demo@aec.local"></div>
+    <div class="field"><label>Password</label><input id="password" type="password" placeholder="••••••••"></div>
+    <button class="login-btn" id="login-btn" onclick="doLogin()">Sign in</button>
+    <div class="login-error" id="login-error"></div>
+    <div class="login-hint">Dark prototype · same live data as the standard view</div>
   </div>
 </div>
 
-<!-- ══════════ DEVICES ══════════ -->
-<div class="page" id="devices">
-  <div class="container">
-    <div class="section-title">All devices</div>
-    <div class="card">
-      <table class="status-table" id="full-status"></table>
+<!-- APP -->
+<div id="app" class="shell hidden">
+  <aside class="sidebar">
+    <div class="sb-brand">
+      <div class="mark"><svg viewBox="0 0 24 24" fill="none"><path d="M13 2L4.5 13H11l-1 9 8.5-11H12l1-9z" fill="#04201c"/></svg></div>
+      <div><div class="sb-bname">Atlantic Energy</div><div class="sb-bsub">Sensor Monitor</div></div>
     </div>
-    <div class="footer-note">Data flows from each device's TTN payload formatter into Azure Blob storage as flat JSON.</div>
+    <div class="sb-tenant"><div class="t-name" id="sb-tenant-name">—</div><div class="t-meta" id="sb-tenant-meta"></div></div>
+    <div class="sb-scroll">
+      <div class="nav-item active" id="nav-overview" onclick="setView('overview')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/></svg>
+        <span class="n-name">Overview</span>
+      </div>
+      <div class="sb-search-wrap"><input id="sb-search" class="sb-search" placeholder="Search devices…" oninput="applyFilter()"></div>
+      <div id="nav-devices"></div>
+    </div>
+    <div class="sb-foot">
+      <button class="sb-btn" onclick="load()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 11A8 8 0 106 6l-2 2m0 0V4m0 4h4"/></svg>Refresh now</button>
+      <button class="sb-btn" onclick="logout()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 17l5-5-5-5M21 12H9M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/></svg>Sign out</button>
+    </div>
+  </aside>
+
+  <div class="main">
+    <div class="topbar">
+      <div><div class="tb-title" id="tb-title">Overview</div><div class="tb-sub" id="tb-sub"></div></div>
+      <div class="tb-right">
+        <div class="range-toggle">
+          <button class="range-btn" data-h="24" onclick="setRange(24,this)">24h</button>
+          <button class="range-btn active" data-h="168" onclick="setRange(168,this)">7d</button>
+          <button class="range-btn" data-h="720" onclick="setRange(720,this)">30d</button>
+        </div>
+        <span class="live-tag"><span class="live-dot" id="live-dot"></span><span id="src-tag">Live</span></span>
+        <span class="countdown" id="countdown"></span>
+        <button class="tb-btn hidden" id="pdf-btn" onclick="openPdf()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3v12m0 0l-4-4m4 4l4-4M5 21h14"/></svg>Report</button>
+      </div>
+    </div>
+    <div class="content" id="content"></div>
   </div>
 </div>
 
-<div class="chart-tooltip" id="tooltip"></div>
+<!-- Expand modal -->
+<div class="modal-scrim" id="expand-scrim" onclick="if(event.target===this)closeExpand()">
+  <div class="modal">
+    <div class="modal-head"><div><h3 id="expand-title">Chart</h3><div class="sub" id="expand-sub"></div></div><button class="modal-x" onclick="closeExpand()">Close ✕</button></div>
+    <div class="modal-body"><div class="legend" id="expand-legend"></div><div class="chart-area" id="expand-area"></div></div>
+  </div>
+</div>
+<!-- PDF modal -->
+<div class="modal-scrim" id="pdf-scrim" onclick="if(event.target===this)closePdf()">
+  <div class="modal modal-sm">
+    <div class="modal-head"><div><h3>Generate report</h3><div class="sub">Branded PDF — opens a print view</div></div><button class="modal-x" onclick="closePdf()">✕</button></div>
+    <div class="modal-body">
+      <div class="pdf-grid">
+        <div class="full"><label>Report title</label><input id="pdf-title"></div>
+        <div><label>From</label><input id="pdf-from" type="date"></div>
+        <div><label>To</label><input id="pdf-to" type="date"></div>
+        <div class="full"><label>Notes</label><input id="pdf-notes" placeholder="Optional"></div>
+      </div>
+      <div class="pdf-sensors"><div class="pdf-sensors-head">Sensors to include<span class="pdf-sel-actions"><a onclick="pdfSelectAll(true)">All</a> · <a onclick="pdfSelectAll(false)">None</a></span></div><div id="pdf-sensor-list"></div></div>
+      <div style="display:flex;justify-content:flex-end;gap:10px">
+        <button class="btn btn-ghost" onclick="closePdf()">Cancel</button>
+        <button class="btn btn-primary" onclick="generateReport()">Generate</button>
+      </div>
+    </div>
+  </div>
+</div>
+<div class="tooltip" id="tooltip"></div>
 
 <script>
-/* ══════════════════════════════════════════════════════════════
-   LIVE DATA — reads real readings from the Azure Function (GetReadings),
-   which serves the sensor-data blobs. If the fetch fails for any reason,
-   it silently falls back to a generated snapshot so the dashboard can
-   never show a broken screen. Field-name variants are normalised below.
-   ══════════════════════════════════════════════════════════════ */
-const API_URL = 'https://aec-ingest-d7ebdah9b6e5e9bf.westeurope-01.azurewebsites.net/api/GetReadings?hours=48';
+const API_BASE=(location.protocol==='file:'||location.hostname==='localhost'||location.hostname==='127.0.0.1')?'http://localhost:7071/api':'https://aec-ingest-d7ebdah9b6e5e9bf.westeurope-01.azurewebsites.net/api';
+const PALETTE=['#2ee6d2','#5b9dff','#f2a24b','#c58bff','#ff6b8a','#4cd97b','#f5d14b','#7aa2ff','#ff9e6b','#63d3ff'];
+const REFRESH_SECS=60;
+let TOKEN=null, CONFIG=null, HOURS=168, RAW={}, TENANT={id:null,name:null,role:null};
+let MODEL={devices:[],groups:[]}, VIEW='overview', HIDDEN={}, EXPANDED=null, CHARTS={}, REFRESH_TIMER=null, COUNTDOWN=REFRESH_SECS;
 
-const NOW = new Date();
-const HOURS = 48, STEP_MIN = 15;
-const STEPS = (HOURS*60)/STEP_MIN;
+function esc(s){ return String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
 
-function curve(t, base, amp) {
-  const h = t.getHours() + t.getMinutes()/60;
-  return +(base + amp * Math.sin(((h-9)/24)*2*Math.PI)).toFixed(2);
+/* auth */
+async function doLogin(){
+  const btn=document.getElementById('login-btn'), err=document.getElementById('login-error'); err.textContent='';
+  const email=document.getElementById('email').value.trim(), password=document.getElementById('password').value;
+  if(!email||!password){ err.textContent='Enter email and password.'; return; }
+  btn.disabled=true; btn.textContent='Signing in…';
+  try{
+    const res=await fetch(`${API_BASE}/Login`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email,password})});
+    if(res.status===401) throw new Error('Invalid email or password.');
+    if(!res.ok) throw new Error('Login failed ('+res.status+').');
+    const data=await res.json(); TOKEN=data.token; TENANT={id:data.customerId,name:data.name||data.customerId,role:data.role};
+    document.getElementById('login-screen').classList.add('hidden'); document.getElementById('app').classList.remove('hidden');
+    document.getElementById('sb-tenant-name').textContent=TENANT.name; document.getElementById('sb-tenant-meta').textContent=`${TENANT.id} · ${TENANT.role}`;
+    await loadConfig(); load();
+    if(REFRESH_TIMER) clearInterval(REFRESH_TIMER);
+    REFRESH_TIMER=setInterval(()=>{ COUNTDOWN--; if(COUNTDOWN<=0) load(); else updateCountdown(); },1000);
+  }catch(e){ err.textContent=e.message||'Could not reach the server.'; }
+  finally{ btn.disabled=false; btn.textContent='Sign in'; }
 }
-function jit(v, d){ return +(v + (Math.random()-0.5)*d).toFixed(2); }
+document.getElementById('password').addEventListener('keydown',e=>{ if(e.key==='Enter') doLogin(); });
+function logout(){ TOKEN=null; CONFIG=null; RAW={}; MODEL={devices:[],groups:[]}; if(REFRESH_TIMER){clearInterval(REFRESH_TIMER);REFRESH_TIMER=null;}
+  document.getElementById('app').classList.add('hidden'); document.getElementById('login-screen').classList.remove('hidden'); document.getElementById('password').value=''; }
+function updateCountdown(){ const m=Math.floor(COUNTDOWN/60),s=COUNTDOWN%60; const el=document.getElementById('countdown'); if(el) el.textContent=`↻ ${m}:${String(s).padStart(2,'0')}`; }
 
-// build a time series of {time, ...fields} for each device
-function series(builder){
-  const arr = [];
-  for (let i = STEPS; i >= 1; i--) {
-    const t = new Date(NOW.getTime() - i*STEP_MIN*60000);
-    arr.push(Object.assign({ time: t }, builder(t, i)));
-  }
-  return arr;
+async function loadConfig(){ CONFIG=null;
+  try{ const r=await fetch(`${API_BASE}/GetConfig`,{headers:{Authorization:'Bearer '+TOKEN},cache:'no-store'}); if(r.status===204) CONFIG=null; else if(r.ok) CONFIG=await r.json(); }catch(e){ CONFIG=null; }
+  document.getElementById('pdf-btn').classList.toggle('hidden', !(CONFIG&&CONFIG.pdfExport));
 }
+function setRange(h,el){ HOURS=h; document.querySelectorAll('.range-btn').forEach(b=>b.classList.remove('active')); el.classList.add('active'); build(); renderMain(); }
 
-// device type / kind lookup (used for both live and fallback)
-const DEVICE_META = {
-  'mclimate-ht1':{type:'MClimate HT',kind:'mclimate'}, 'mclimate-ht2':{type:'MClimate HT',kind:'mclimate'},
-  'mclimate-ht3':{type:'MClimate HT',kind:'mclimate'}, 'mclimate-ht4':{type:'MClimate HT',kind:'mclimate'},
-  'netvox-r718n17':{type:'Netvox R718N',kind:'netvox'}, 'netvox-r809':{type:'Netvox R809A',kind:'netvox'},
-  'ct101-1':{type:'CT101 clamp',kind:'ct101'}, 'ct101-2':{type:'CT101 clamp',kind:'ct101'},
-  'cubicmeter':{type:'CubicMeter',kind:'cubicmeter'}, 'am307':{type:'AM307 multi',kind:'am307'},
-  'loadcell':{type:'Load cell LCC01-LB',kind:'loadcell'}
-};
-
-// normalise a raw payload's field-name variants into the canonical names the charts use
-function normalise(p){
-  if (!p) return null;
-  const o = Object.assign({}, p);
-  if (o.temperature!==undefined && o.sensorTemperature===undefined) o.sensorTemperature = o.temperature;
-  if (o.humidity!==undefined    && o.relativeHumidity===undefined)  o.relativeHumidity  = o.humidity;
-  if (o.BatV!==undefined         && o.batteryVoltage===undefined)    o.batteryVoltage    = o.BatV;
-  if (o.Volt!==undefined         && o.batteryVoltage===undefined)    o.batteryVoltage    = o.Volt;
-  // reject the raw fallback shape (undecoded)
-  if (o.raw_frm_payload!==undefined && Object.keys(p).length<=2) return null;
-  return o;
-}
-
-let DEVICES = buildSnapshot();   // starts as snapshot; replaced by live data if the fetch succeeds
-
-function buildSnapshot(){ return {
-  'mclimate-ht1': { type:'MClimate HT', kind:'mclimate', data: series((t)=>({ sensorTemperature: jit(curve(t,20.3,1.6),0.2), relativeHumidity: jit(curve(t,61,6),1.2), batteryVoltage: jit(3.5,0.05) })) },
-  'mclimate-ht2': { type:'MClimate HT', kind:'mclimate', data: series((t)=>({ sensorTemperature: jit(curve(t,20.7,1.5),0.2), relativeHumidity: jit(curve(t,64,6),1.2), batteryVoltage: jit(3.5,0.05) })) },
-  'mclimate-ht3': { type:'MClimate HT', kind:'mclimate', data: series((t)=>({ sensorTemperature: jit(curve(t,20.5,1.7),0.2), relativeHumidity: jit(curve(t,62,6),1.2), batteryVoltage: jit(3.49,0.05) })) },
-  'mclimate-ht4': { type:'MClimate HT', kind:'mclimate', data: series((t)=>({ sensorTemperature: jit(curve(t,20.2,1.6),0.2), relativeHumidity: jit(curve(t,63,6),1.2), batteryVoltage: jit(3.5,0.05) })) },
-  'netvox-r718n17': { type:'Netvox R718N', kind:'netvox', data: series((t)=>({ Volt: jit(3.6,0.04), Current: jit(0.2,0.15) })) },
-  'netvox-r809': { type:'Netvox R809A', kind:'netvox', data: series((t,i)=>({ Energy: Math.round(1246312 + (STEPS-i)*12 + Math.random()*4), OnOff:'ON' })) },
-  'ct101-1': { type:'CT101 clamp', kind:'ct101', data: series((t)=>({ current: jit(curve(t,2.4,1.1),0.15), temperature: jit(curve(t,17.2,1.0),0.2), total_current: jit(21500,200) })) },
-  'ct101-2': { type:'CT101 clamp', kind:'ct101', data: series((t)=>({ current: jit(curve(t,2.6,1.2),0.15), temperature: jit(curve(t,17.5,1.0),0.2), total_current: jit(21520,200) })) },
-  'cubicmeter': { type:'CubicMeter', kind:'cubicmeter', data: series((t,i)=>({ totalVolume: Math.round(421 + (STEPS-i)*0.6), ambientTemperature: jit(curve(t,22.5,0.8),0.15), leakState:0, isSensing:true, errorCode:0, batteryActive: 3536 })) },
-  'am307': { type:'AM307 multi', kind:'am307', data: series((t)=>({ co2: Math.round(curve(t,620,220)+jit(0,30)), temperature: jit(curve(t,21.0,1.4),0.2), humidity: jit(curve(t,55,7),1.2), pressure: jit(1013,3) })) },
-  'loadcell': { type:'Load cell LCC01-LB', kind:'loadcell', data: series((t)=>({ Weight_Reading: Math.round(curve(t,123000,40000)+jit(0,1500)), BatV: jit(3.58,0.04) })) }
-}; }
-
-// last-seen offsets (mins ago) — recomputed from live data when available
-let LAST_SEEN = { 'mclimate-ht1':8,'mclimate-ht2':3,'mclimate-ht3':1,'mclimate-ht4':5,'netvox-r718n17':11,'netvox-r809':7,'ct101-1':19,'ct101-2':19,'cubicmeter':28,'am307':6,'loadcell':1 };
-
-/* ── helpers ── */
-const KINDS = [
-  {key:'all', label:'All devices'},
-  {key:'mclimate', label:'MClimate'},
-  {key:'netvox', label:'Netvox'},
-  {key:'ct101', label:'CT101'},
-  {key:'cubicmeter', label:'CubicMeter'},
-  {key:'am307', label:'AM307'},
-  {key:'loadcell', label:'Load cell'}
-];
-let activeFilter = 'all';
-const rangeHours = { th:24, energy:24, water:24 };
-const last = d => d.data[d.data.length-1];
-const tooltip = document.getElementById('tooltip');
-
-/* ── clock ── */
-function tick(){ document.getElementById('clock').textContent = new Date().toLocaleTimeString('en-IE',{hour:'2-digit',minute:'2-digit',second:'2-digit'}); }
-setInterval(tick,1000); tick();
-
-/* ── tabs ── */
-function showTab(id, el){
-  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
-  document.getElementById(id).classList.add('active');
-  document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
-  el.classList.add('active');
+async function load(){
+  COUNTDOWN=REFRESH_SECS; updateCountdown();
+  const dot=document.getElementById('live-dot'), src=document.getElementById('src-tag');
+  if(!MODEL.devices.length) document.getElementById('content').innerHTML='<div class="skeleton"></div>';
+  src.textContent='Loading…'; dot.classList.remove('stale');
+  try{
+    const r=await fetch(`${API_BASE}/GetReadings?hours=720`,{headers:{Authorization:'Bearer '+TOKEN},cache:'no-store'});
+    if(r.status===401){ logout(); return; }
+    if(!r.ok) throw new Error('HTTP '+r.status);
+    RAW=(await r.json()).devices||{};
+    Object.values(RAW).forEach(a=>{ if(Array.isArray(a)) a.forEach(x=>{ x.payload=flatten(x.payload||{}); }); });
+    src.textContent='Live · Azure';
+    build(); renderSidebar(); renderMain();
+  }catch(e){ src.textContent='Offline'; dot.classList.add('stale'); document.getElementById('content').innerHTML=`<div class="error-box"><b>Couldn't reach the data service.</b><br>${e.message}</div>`; }
 }
 
-/* ── filter pills ── */
-function buildFilters(){
-  const row = document.getElementById('filter-row');
-  row.innerHTML = KINDS.map(k=>`<button class="pill ${k.key==='all'?'active':''}" onclick="setFilter('${k.key}',this)">${k.label}</button>`).join('');
-}
-function setFilter(key, el){
-  activeFilter = key;
-  document.querySelectorAll('.pill').forEach(p=>p.classList.remove('active'));
-  el.classList.add('active');
-  renderKPIs(); renderMiniStatus(); renderBatteries();
-}
-function devsFor(kind){ return Object.entries(DEVICES).filter(([id,d])=> kind==='all' || d.kind===kind); }
+function prep(a,hours){ const cut=Date.now()-hours*3600*1000; return (a||[]).map(r=>({t:new Date(r.time),p:r.payload||{}})).filter(r=>!isNaN(r.t)&&r.t.getTime()>=cut).sort((a,b)=>a.t-b.t); }
+function num(v){ return (typeof v==='number'&&isFinite(v))?v:null; }
+function evalTh(v,t){ if(v==null||!t) return 'ok'; if(t.redAbove!=null&&v>=t.redAbove)return'red'; if(t.redBelow!=null&&v<=t.redBelow)return'red'; if(t.amberAbove!=null&&v>=t.amberAbove)return'amber'; if(t.amberBelow!=null&&v<=t.amberBelow)return'amber'; return 'ok'; }
 
-/* ── KPIs ── */
-function renderKPIs(){
-  const grid = document.getElementById('kpi-grid');
-  const online = Object.values(LAST_SEEN).filter(m=>m<=30).length;
-  const total = Object.keys(DEVICES).length;
-  const mcs = ['mclimate-ht1','mclimate-ht2','mclimate-ht3','mclimate-ht4'].map(id=>last(DEVICES[id]).sensorTemperature);
-  const avgTemp = (mcs.reduce((a,b)=>a+b,0)/mcs.length).toFixed(1);
-  const water = last(DEVICES['cubicmeter']).totalVolume;
-  const energy = ((last(DEVICES['netvox-r809']).Energy - DEVICES['netvox-r809'].data[0].Energy)/1000).toFixed(1);
-  const weight = (last(DEVICES['loadcell']).Weight_Reading/1000).toFixed(0);
-  const co2 = last(DEVICES['am307']).co2;
-
-  grid.innerHTML = `
-    ${kpi('Devices online', `${online}<span class="metric-unit">/${total}</span>`, online===total?'ok':'warn', online===total?'All reporting':`${total-online} quiet`)}
-    ${kpi('Avg temperature', `${avgTemp}<span class="metric-unit"> °C</span>`, 'ok', 'Within range')}
-    ${kpi('Water today', `${water}<span class="metric-unit"> L</span>`, 'ok', 'No leak')}
-    ${kpi('Energy 48h', `${energy}<span class="metric-unit"> kWh</span>`, 'ok', 'Netvox R809')}
-    ${kpi('Load cell', `${weight}<span class="metric-unit"> kg</span>`, 'ok', 'Stable')}
-    ${kpi('CO₂ (AM307)', `${co2}<span class="metric-unit"> ppm</span>`, co2>1000?'warn':'ok', co2>1000?'Elevated':'Good air')}
-  `;
-}
-function kpi(label, value, cls, status){
-  return `<div class="metric-card"><div class="metric-label">${label}</div><div class="metric-value">${value}</div><div class="metric-status ${cls}">${status}</div></div>`;
-}
-
-/* ── alert zone ── */
-function renderAlerts(){
-  const co2 = last(DEVICES['am307']).co2;
-  const zone = document.getElementById('alert-zone');
-  if (co2 > 1000) {
-    zone.innerHTML = `<div class="alert-banner"><span class="alert-banner-text">⚠ AM307 CO₂ elevated — ${co2} ppm (ventilation advised)</span><span class="alert-banner-time">${mins(6)}</span></div>`;
-  } else { zone.innerHTML = ''; }
-}
-
-/* ── device status tables ── */
-function signalBars(mins){
-  const strength = mins<=20?4 : mins<=45?3 : mins<=90?2 : 1;
-  let s='<span class="signal-bars">';
-  for(let i=1;i<=4;i++) s+=`<span class="${i<=strength?'on':''}" style="height:${3+i*2.5}px"></span>`;
-  return s+'</span>';
-}
-function mins(m){ return m<60 ? `${m} min ago` : `${Math.floor(m/60)}h ago`; }
-function statusRows(list, full){
-  return list.map(([id,d])=>{
-    const m = LAST_SEEN[id];
-    const stat = m<=45?'ok':m<=90?'warn':'alert';
-    const statTxt = m<=45?'Online':m<=90?'Delayed':'Quiet';
-    const bat = batteryPct(d);
-    return `<tr>
-      <td><span class="dev-name">${id}</span>${full?`<br><span class="dev-type">${d.type}</span>`:''}</td>
-      ${full?`<td class="dev-type">${d.type}</td>`:''}
-      <td><span class="status-dot"><span class="dot dot-${stat}"></span>${statTxt}</span></td>
-      <td>${signalBars(m)}</td>
-      ${full?`<td class="dev-type">${bat!==null?bat+'%':'—'}</td>`:''}
-      <td class="dev-type" style="font-family:'IBM Plex Mono',monospace">${mins(m)}</td>
-    </tr>`;
-  }).join('');
-}
-function renderMiniStatus(){
-  const list = devsFor(activeFilter);
-  document.getElementById('dev-count-sub').textContent = `${list.length} of ${Object.keys(DEVICES).length} devices`;
-  document.getElementById('mini-status').innerHTML =
-    `<thead><tr><th>Device</th><th>Status</th><th>Signal</th><th>Last seen</th></tr></thead><tbody>${statusRows(list,false)}</tbody>`;
-}
-function renderFullStatus(){
-  document.getElementById('full-status').innerHTML =
-    `<thead><tr><th>Device</th><th>Type</th><th>Status</th><th>Signal</th><th>Battery</th><th>Last seen</th></tr></thead><tbody>${statusRows(Object.entries(DEVICES),true)}</tbody>`;
-}
-
-/* ── batteries ── */
-function batteryPct(d){
-  const l = last(d);
-  if (l.batteryVoltage!==undefined) return Math.round(Math.min(100, Math.max(0, (l.batteryVoltage-3.2)/(3.65-3.2)*100)));
-  if (l.BatV!==undefined) return Math.round(Math.min(100, Math.max(0, (l.BatV-3.2)/(3.65-3.2)*100)));
-  if (l.Volt!==undefined) return Math.round(Math.min(100, Math.max(0, (l.Volt-3.2)/(3.65-3.2)*100)));
-  if (l.batteryActive!==undefined) return Math.round(Math.min(100, Math.max(0, (l.batteryActive-3200)/(3650-3200)*100)));
-  return null;
-}
-function renderBatteries(){
-  const list = devsFor(activeFilter).filter(([id,d])=>batteryPct(d)!==null);
-  document.getElementById('battery-list').innerHTML = list.map(([id,d])=>{
-    const pct = batteryPct(d);
-    const col = pct>60?'var(--ok)':pct>30?'var(--warn)':'var(--alert)';
-    return `<div class="battery-row"><span class="battery-name">${id}</span><div class="battery-track"><div class="battery-fill" style="width:${pct}%;background:${col}"></div></div><span class="battery-val">${pct}%</span></div>`;
-  }).join('');
-}
-
-/* ── range toggles ── */
-function setRange(key, hours, el){
-  rangeHours[key]=hours;
-  el.parentElement.querySelectorAll('.range-btn').forEach(b=>b.classList.remove('active'));
-  el.classList.add('active');
-  if(key==='th') drawTHChart();
-  if(key==='energy') drawEnergyChart();
-  if(key==='water') drawWaterChart();
-}
-
-/* ══════ D3 charts (Achill drawChart idiom) ══════ */
-// cutoff is relative to the NEWEST reading in the data, not wall-clock now —
-// so a freshly-seeded cluster still spreads nicely across the axis.
-function newestTime(){
-  let max = 0;
-  Object.values(DEVICES).forEach(d=>{ if(d.data.length){ const t=d.data[d.data.length-1].time.getTime(); if(t>max) max=t; }});
-  return max || NOW.getTime();
-}
-function cutoff(hours){ return new Date(newestTime()-hours*3600000); }
-function chartBox(containerId, height){
-  const container = document.getElementById(containerId);
-  container.innerHTML='';
-  const width = container.clientWidth || 640;
-  const svg = d3.select(container).append('svg').attr('width',width).attr('height',height);
-  return {svg,width,height};
-}
-function addTip(sel, fmt){
-  sel.on('mousemove',(e,d)=>{ tooltip.style.opacity=1; tooltip.style.left=(e.pageX+12)+'px'; tooltip.style.top=(e.pageY-10)+'px'; tooltip.innerHTML=fmt(d); })
-     .on('mouseleave',()=>tooltip.style.opacity=0);
-}
-
-let thSensor = 'avg';   // 'avg' | 'all' | 'mclimate-htN'
-const TH_IDS = ['mclimate-ht1','mclimate-ht2','mclimate-ht3','mclimate-ht4'];
-const TH_COLORS = { 'mclimate-ht1':'#0e9f8e','mclimate-ht2':'#3182ce','mclimate-ht3':'#d69e2e','mclimate-ht4':'#9f7aea' };
-
-function setTHSensor(mode, el){
-  thSensor = mode;
-  el.parentElement.querySelectorAll('.th-pill').forEach(b=>b.classList.remove('active'));
-  el.classList.add('active');
-  const sub = document.getElementById('th-sub');
-  if (sub) sub.textContent = mode==='avg' ? 'MClimate sensors — fleet average'
-                          : mode==='all' ? 'MClimate sensors — all four'
-                          : mode==='am307' ? 'AM307 — air quality sensor'
-                          : 'MClimate sensor — ' + mode.replace('mclimate-','').toUpperCase();
-  drawTHChart();
-}
-
-// returns {time, sensorTemperature, relativeHumidity}[] for one device within the cutoff
-function thSeries(id, cut){ return DEVICES[id].data.filter(d=>d.time>=cut); }
-
-function drawTHChart(){
-  const {svg,width,height}=chartBox('th-chart',230);
-  const m={top:12,right:44,bottom:26,left:38};
-  const cut=cutoff(rangeHours.th);
-
-  // which device lines to draw, plus how to get each point's temp/hum
-  let lines; // [{id, color, data:[{time,t,h}]}]
-  if (thSensor==='avg') {
-    const mcs = TH_IDS.map(id=>thSeries(id,cut));
-    const ref = mcs[0];
-    const data = ref.map((_,i)=>({
-      time: ref[i].time,
-      t: d3.mean(mcs, s=> s[i] ? s[i].sensorTemperature : undefined),
-      h: d3.mean(mcs, s=> s[i] ? s[i].relativeHumidity : undefined)
-    })).filter(d=>d.t!==undefined && d.h!==undefined);
-    lines = [{ id:'avg', color:'#0e9f8e', data }];
-  } else if (thSensor==='all') {
-    lines = TH_IDS.map(id=>({
-      id, color:TH_COLORS[id],
-      data: thSeries(id,cut).map(d=>({time:d.time, t:d.sensorTemperature, h:d.relativeHumidity}))
-    })).filter(l=>l.data.length);
-  } else {
-    lines = [{
-      id:thSensor, color:'#0e9f8e',
-      data: thSeries(thSensor,cut).map(d=>({time:d.time, t:(d.sensorTemperature!==undefined?d.sensorTemperature:d.temperature), h:(d.relativeHumidity!==undefined?d.relativeHumidity:d.humidity)}))
-                                  .filter(d=>d.t!==undefined && d.h!==undefined)
-    }];
-  }
-
-  const allPts = lines.flatMap(l=>l.data);
-  if (!allPts.length){ svg.append('text').attr('x',width/2).attr('y',height/2).attr('text-anchor','middle').attr('fill','#a0aec0').attr('font-size','12').text('No readings in range'); return; }
-
-  const x=d3.scaleTime().domain(d3.extent(allPts,d=>d.time)).range([m.left,width-m.right]);
-  const yT=d3.scaleLinear().domain([d3.min(allPts,d=>d.t)-1, d3.max(allPts,d=>d.t)+1]).range([height-m.bottom,m.top]);
-  const yH=d3.scaleLinear().domain([d3.min(allPts,d=>d.h)-4, d3.max(allPts,d=>d.h)+4]).range([height-m.bottom,m.top]);
-  const fmt=rangeHours.th<=24?d3.timeFormat('%H:%M'):d3.timeFormat('%d %b');
-
-  svg.append('g').attr('class','grid').attr('transform',`translate(${m.left},0)`).call(d3.axisLeft(yT).ticks(4).tickSize(-(width-m.left-m.right)).tickFormat(''));
-  svg.append('g').attr('class','axis').attr('transform',`translate(0,${height-m.bottom})`).call(d3.axisBottom(x).ticks(6).tickFormat(fmt));
-  svg.append('g').attr('class','axis').attr('transform',`translate(${m.left},0)`).call(d3.axisLeft(yT).ticks(4));
-  svg.append('g').attr('class','axis').attr('transform',`translate(${width-m.right},0)`).call(d3.axisRight(yH).ticks(4));
-
-  const lineT=d3.line().x(d=>x(d.time)).y(d=>yT(d.t)).curve(d3.curveMonotoneX);
-  const lineH=d3.line().x(d=>x(d.time)).y(d=>yH(d.h)).curve(d3.curveMonotoneX);
-
-  // gradient fill only in single-line modes (avg or one sensor), for a clean look
-  if (thSensor!=='all') {
-    const areaT=d3.area().x(d=>x(d.time)).y0(height-m.bottom).y1(d=>yT(d.t)).curve(d3.curveMonotoneX);
-    const grad=svg.append('defs').append('linearGradient').attr('id','tg').attr('x1',0).attr('y1',0).attr('x2',0).attr('y2',1);
-    grad.append('stop').attr('offset','0%').attr('stop-color','#0e9f8e').attr('stop-opacity',0.18);
-    grad.append('stop').attr('offset','100%').attr('stop-color','#0e9f8e').attr('stop-opacity',0);
-    svg.append('path').datum(lines[0].data).attr('fill','url(#tg)').attr('d',areaT);
-  }
-
-  lines.forEach(l=>{
-    // temperature line in the device colour, humidity in blue (dashed when overlaying to keep it readable)
-    svg.append('path').datum(l.data).attr('fill','none').attr('stroke', thSensor==='all'? l.color : '#0e9f8e').attr('stroke-width',2).attr('d',lineT);
-    svg.append('path').datum(l.data).attr('fill','none').attr('stroke','#3182ce').attr('stroke-width',thSensor==='all'?1.2:2).attr('stroke-dasharray', thSensor==='all'?'4 3':'0').attr('opacity',thSensor==='all'?0.55:1).attr('d',lineH);
+/* build MODEL from RAW+CONFIG */
+function build(){
+  const specs=(CONFIG&&Array.isArray(CONFIG.devices)&&CONFIG.devices.length)
+    ? CONFIG.devices.map(d=>({sensorId:d.sensorId,name:d.name||d.sensorId,params:(d.params||[]).map(p=>({key:p.key,label:p.label||prettify(p.key),unit:p.unit||'',chart:p.chart||'line',thresholds:p.thresholds}))}))
+    : Object.keys(RAW).sort().map(sid=>{ const rd=prep(RAW[sid],720); const lt=rd.length?rd[rd.length-1]:null; const ks=lt?Object.keys(lt.p).filter(k=>num(lt.p[k])!=null):[]; return {sensorId:sid,name:sid,params:ks.map(k=>({key:k,label:prettify(k),unit:'',chart:'line'}))}; }).filter(d=>d.params.length);
+  let ci=0; const devColor={}; specs.forEach(d=>devColor[d.sensorId]=PALETTE[ci++%PALETTE.length]);
+  const groups={}; const devices=[];
+  specs.forEach(d=>{
+    const rd=prep(RAW[d.sensorId],HOURS); const latest=rd.length?rd[rd.length-1]:null;
+    const fresh=latest&&(Date.now()-latest.t.getTime())<90*60000; let dstate='ok'; const params=[];
+    d.params.forEach(p=>{
+      const pts=rd.map(r=>({t:r.t,v:num(r.p[p.key])})).filter(x=>x.v!=null);
+      const lv=pts.length?pts[pts.length-1].v:null; const st=evalTh(lv,p.thresholds);
+      if(st==='red'){ if(dstate!=='red')dstate='red'; } else if(st==='amber'){ if(dstate==='ok')dstate='amber'; }
+      params.push({...p,pts,lv,state:st});
+      if(p.chart!=='value'&&pts.length){ const gk=p.label+'|'+p.unit; if(!groups[gk]) groups[gk]={key:gk,label:p.label,unit:p.unit,series:[],hidden:HIDDEN[gk]||(HIDDEN[gk]=new Set())}; groups[gk].series.push({name:d.name,color:devColor[d.sensorId],pts,thresholds:p.thresholds,unit:p.unit}); }
+    });
+    devices.push({sensorId:d.sensorId,name:d.name,color:devColor[d.sensorId],fresh,latest,state:(!fresh?'off':dstate),params});
   });
-
-  const dots=svg.append('g');
-  dots.selectAll('c').data(lines[0].data.filter((_,i)=>i%3===0)).enter().append('circle').attr('cx',d=>x(d.time)).attr('cy',d=>yT(d.t)).attr('r',6).attr('fill','transparent');
-  addTip(dots.selectAll('circle'), d=>`${d.t.toFixed(1)} °C · ${d.h.toFixed(0)}%`);
+  MODEL={ devices, groups:Object.values(groups).sort((a,b)=>b.series.length-a.series.length||a.label.localeCompare(b.label)) };
 }
 
-let powerSensor = 'netvox-r809';   // which device the power card shows
-
-function setPowerSensor(id, el){
-  powerSensor = id;
-  el.parentElement.querySelectorAll('.th-pill').forEach(b=>b.classList.remove('active'));
-  el.classList.add('active');
-  const sub = document.getElementById('pw-sub');
-  const subs = {
-    'netvox-r809':'Netvox R809 — cumulative energy draw',
-    'ct101-1':'CT101-1 clamp — line current',
-    'ct101-2':'CT101-2 clamp — line current',
-    'netvox-r718n17':'Netvox R718N17 — measured current'
-  };
-  if (sub) sub.textContent = subs[id];
-  drawEnergyChart();
+const CATS=['Climate','Energy','Water','Other'];
+function categoryOf(d){
+  const s=d.params.map(p=>(p.label+' '+p.key).toLowerCase()).join(' ');
+  if(/current|power|watt|\bamp|kwh|mains/.test(s)) return 'Energy';
+  if(/volume|water|leak|flow|litre|liter/.test(s)) return 'Water';
+  if(/temp|humid|co2|pressure|dewpoint/.test(s)) return 'Climate';
+  return 'Other';
+}
+function deviceRowHtml(d){
+  const stateDot=d.state==='off'?'off':d.state==='red'?'red':d.state==='amber'?'amber':'ok';
+  const active=VIEW==='dev:'+d.sensorId?' active':'';
+  const first=d.params.find(p=>p.lv!=null); const val=first?`${fmt(first.lv)}${first.unit||''}`:'';
+  return `<div class="nav-item dev-row-item${active}" data-name="${esc((d.name+' '+d.sensorId).toLowerCase())}" onclick="setView('dev:${d.sensorId}')">
+    <div class="dri-top"><span class="n-dot ${stateDot}"></span><span class="n-name">${esc(d.name)}</span><span class="n-val">${val}</span></div>
+    <div class="dri-spark" id="spk-${d.sensorId}"></div></div>`;
+}
+function sparklineSvg(d){
+  const p=d.params.find(p=>p.pts&&p.pts.length>=2); if(!p) return '';
+  const pts=p.pts.slice(-40); const vs=pts.map(x=>x.v); const mn=Math.min(...vs),mx=Math.max(...vs); const rng=(mx-mn)||1;
+  const w=100,h=24; const path=pts.map((pt,i)=>{ const x=(i/(pts.length-1))*w; const y=h-2-((pt.v-mn)/rng)*(h-4); return (i?'L':'M')+x.toFixed(1)+' '+y.toFixed(1); }).join(' ');
+  const color=d.state==='red'?'#ff6058':d.state==='amber'?'#f5b13f':d.color||'#16c8b4';
+  return `<svg viewBox="0 0 ${w} ${h}" preserveAspectRatio="none" style="width:100%;height:24px;display:block"><path d="${path}" fill="none" stroke="${color}" stroke-width="1.4" vector-effect="non-scaling-stroke"/></svg>`;
+}
+function renderSidebar(){
+  const el=document.getElementById('nav-devices');
+  if(!MODEL.devices.length){ el.innerHTML='<div style="padding:8px 11px;color:var(--text-soft);font-size:12px">No devices</div>'; return; }
+  const cats={}; CATS.forEach(c=>cats[c]=[]); MODEL.devices.forEach(d=>cats[categoryOf(d)].push(d));
+  let html='';
+  CATS.forEach(cat=>{ if(!cats[cat].length) return; html+=`<div class="sb-label sb-cat">${cat}</div>`+cats[cat].map(deviceRowHtml).join(''); });
+  el.innerHTML=html;
+  MODEL.devices.forEach(d=>{ const c=document.getElementById('spk-'+d.sensorId); if(c) c.innerHTML=sparklineSvg(d); });
+  applyFilter();
+}
+function applyFilter(){
+  const box=document.getElementById('sb-search'); const q=(box?box.value:'').trim().toLowerCase();
+  document.querySelectorAll('#nav-devices .dev-row-item').forEach(it=>{ it.classList.toggle('hidden', !!q && !it.dataset.name.includes(q)); });
+  document.querySelectorAll('#nav-devices .sb-cat').forEach(lbl=>{ let n=lbl.nextElementSibling, any=false;
+    while(n&&n.classList.contains('dev-row-item')){ if(!n.classList.contains('hidden')) any=true; n=n.nextElementSibling; }
+    lbl.classList.toggle('hidden',!any); });
 }
 
-function drawEnergyChart(){
-  const {svg,width,height}=chartBox('energy-chart',230);
-  const m={top:12,right:16,bottom:26,left:54};
-  const cut=cutoff(rangeHours.energy);
-  const raw=DEVICES[powerSensor].data.filter(d=>d.time>=cut);
+function setView(v){ VIEW=v; document.getElementById('nav-overview').classList.toggle('active',v==='overview'); renderSidebar(); renderMain(); document.querySelector('.content').scrollTop=0; }
 
-  // pick metric + label + unit per device
-  let data, unit, fill;
-  if (powerSensor==='netvox-r809'){
-    const e0 = raw.length? raw[0].Energy : 0;
-    data = raw.map(d=>({time:d.time, value:(d.Energy-e0)/1000}));   // kWh since window start
-    unit='kWh'; fill='#13c4b0';
-  } else {
-    // ct101-1 / ct101-2 / r718n17 all report instantaneous current
-    data = raw.map(d=>({time:d.time, value: d.current!==undefined ? d.current : (d.Current!==undefined ? d.Current : 0)}));
-    unit='A'; fill='#0e9f8e';
-  }
+function renderMain(){ CHARTS={}; if(VIEW==='overview') renderOverview(); else renderDevice(VIEW.slice(4)); }
 
-  if(!data.length){ svg.append('text').attr('x',width/2).attr('y',height/2).attr('text-anchor','middle').attr('fill','#a0aec0').attr('font-size','12').text('No readings in range'); return; }
-
-  const x=d3.scaleTime().domain(d3.extent(data,d=>d.time)).range([m.left,width-m.right]);
-  const yMax = d3.max(data,d=>d.value);
-  const yMin = unit==='kWh' ? 0 : Math.max(0, d3.min(data,d=>d.value)-0.3);
-  const y=d3.scaleLinear().domain([yMin, (yMax*1.1)||1]).range([height-m.bottom,m.top]);
-  const fmt=rangeHours.energy<=24?d3.timeFormat('%H:%M'):d3.timeFormat('%d %b');
-  svg.append('g').attr('class','grid').attr('transform',`translate(${m.left},0)`).call(d3.axisLeft(y).ticks(4).tickSize(-(width-m.left-m.right)).tickFormat(''));
-  svg.append('g').attr('class','axis').attr('transform',`translate(0,${height-m.bottom})`).call(d3.axisBottom(x).ticks(6).tickFormat(fmt));
-  svg.append('g').attr('class','axis').attr('transform',`translate(${m.left},0)`).call(d3.axisLeft(y).ticks(4).tickFormat(d=> unit==='kWh' ? d+' kWh' : d+' A'));
-  const area=d3.area().x(d=>x(d.time)).y0(height-m.bottom).y1(d=>y(d.value)).curve(d3.curveMonotoneX);
-  const grad=svg.append('defs').append('linearGradient').attr('id','eg').attr('x1',0).attr('y1',0).attr('x2',0).attr('y2',1);
-  grad.append('stop').attr('offset','0%').attr('stop-color',fill).attr('stop-opacity',0.28);
-  grad.append('stop').attr('offset','100%').attr('stop-color',fill).attr('stop-opacity',0);
-  svg.append('path').datum(data).attr('fill','url(#eg)').attr('d',area);
-  const line=d3.line().x(d=>x(d.time)).y(d=>y(d.value)).curve(d3.curveMonotoneX);
-  svg.append('path').datum(data).attr('fill','none').attr('stroke','#0e9f8e').attr('stroke-width',2).attr('d',line);
-  const dots=svg.append('g');
-  dots.selectAll('c').data(data.filter((_,i)=>i%3===0)).enter().append('circle').attr('cx',d=>x(d.time)).attr('cy',d=>y(d.value)).attr('r',6).attr('fill','transparent');
-  addTip(dots.selectAll('circle'), d=>`${d.value.toFixed(2)} ${unit}`);
+function renderOverview(){
+  document.getElementById('tb-title').textContent='Overview';
+  document.getElementById('tb-sub').textContent=`${MODEL.devices.length} devices · trailing ${labelH(HOURS)}`;
+  const c=document.getElementById('content');
+  if(!MODEL.devices.length){ c.innerHTML='<div class="empty">No devices reporting yet for this account.</div>'; return; }
+  const total=MODEL.devices.length, online=MODEL.devices.filter(d=>d.fresh).length;
+  let amber=0,red=0; const alist=[];
+  MODEL.devices.forEach(d=>d.params.forEach(p=>{ if(p.state==='red'){red++;alist.push(`${d.name} · ${p.label} = ${fmt(p.lv)}${p.unit}`);} else if(p.state==='amber'){amber++;alist.push(`${d.name} · ${p.label} = ${fmt(p.lv)}${p.unit}`);} }));
+  const offline=total-online;
+  // A sensor that has stopped reporting is a problem in its own right - without this
+  // the banner shows a green 'all nominal' while every device on the account is dark.
+  const hs=red>0?'red':(amber>0||offline>0)?'amber':'ok';
+  const hicon=hs==='ok'?'<path d="M20 6L9 17l-5-5"/>':'<path d="M12 9v4m0 4h.01M10.3 3.9L1.8 18a2 2 0 001.7 3h17a2 2 0 001.7-3L13.7 3.9a2 2 0 00-3.4 0z"/>';
+  const hbits=[];
+  if(red>0) hbits.push(`${red} active alert${red>1?'s':''}`);
+  if(amber>0) hbits.push(`${amber} warning${amber>1?'s':''}`);
+  if(offline>0) hbits.push(`${offline} sensor${offline>1?'s':''} offline`);
+  const htext=hbits.length?hbits.join(' · '):'All systems nominal';
+  c.innerHTML=`
+    <div class="health ${hs}"><div class="hicon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">${hicon}</svg></div>
+      <div class="htext"><div class="h1">${htext}</div><div class="h2">${online} of ${total} devices online · updated ${new Date().toLocaleTimeString('en-IE',{hour:'2-digit',minute:'2-digit'})}</div></div>
+      ${alist.length?`<div class="hlist">${alist.slice(0,3).map(esc).join('<br>')}${alist.length>3?`<br>…and ${alist.length-3} more`:''}</div>`:''}</div>
+    <div class="kpi-row">
+      <div class="kpi"><div class="kpi-label">Devices</div><div class="kpi-value">${total}</div><div class="kpi-foot">on this account</div></div>
+      <div class="kpi ${online===total?'k-ok':online===0?'k-alert':'k-warn'}"><div class="kpi-label">Online now</div><div class="kpi-value">${online}<small>/${total}</small></div><div class="kpi-foot">last 90 min</div></div>
+      <div class="kpi ${amber>0?'k-warn':'k-ok'}"><div class="kpi-label">Warnings</div><div class="kpi-value">${amber}</div><div class="kpi-foot">amber thresholds</div></div>
+      <div class="kpi ${red>0?'k-alert':'k-ok'}"><div class="kpi-label">Alerts</div><div class="kpi-value">${red}</div><div class="kpi-foot">red thresholds</div></div>
+    </div>
+    <div class="section-title">Trends — all sensors</div>
+    <div class="charts-grid" id="ov-charts"></div>`;
+  const wrap=document.getElementById('ov-charts');
+  if(!MODEL.groups.length){ wrap.innerHTML='<div class="empty">No chartable readings in this range yet.</div>'; return; }
+  MODEL.groups.forEach(g=>wrap.appendChild(chartCard(g)));
 }
 
-function drawWaterChart(){
-  const {svg,width,height}=chartBox('water-chart',200);
-  const m={top:12,right:16,bottom:26,left:46};
-  const cut=cutoff(rangeHours.water);
-  const data=DEVICES['cubicmeter'].data.filter(d=>d.time>=cut).map(d=>({time:d.time,value:d.totalVolume}));
-  const x=d3.scaleTime().domain(d3.extent(data,d=>d.time)).range([m.left,width-m.right]);
-  const y=d3.scaleLinear().domain([d3.min(data,d=>d.value)-5,d3.max(data,d=>d.value)+5]).range([height-m.bottom,m.top]);
-  svg.append('g').attr('class','grid').attr('transform',`translate(${m.left},0)`).call(d3.axisLeft(y).ticks(4).tickSize(-(width-m.left-m.right)).tickFormat(''));
-  svg.append('g').attr('class','axis').attr('transform',`translate(0,${height-m.bottom})`).call(d3.axisBottom(x).ticks(5).tickFormat(d3.timeFormat(rangeHours.water<=24?'%H:%M':'%d %b')));
-  svg.append('g').attr('class','axis').attr('transform',`translate(${m.left},0)`).call(d3.axisLeft(y).ticks(4).tickFormat(d=>d+'L'));
-  const line=d3.line().x(d=>x(d.time)).y(d=>y(d.value)).curve(d3.curveMonotoneX);
-  svg.append('path').datum(data).attr('fill','none').attr('stroke','#3182ce').attr('stroke-width',2).attr('d',line);
-  const dots=svg.append('g');
-  dots.selectAll('c').data(data.filter((_,i)=>i%3===0)).enter().append('circle').attr('cx',d=>x(d.time)).attr('cy',d=>y(d.value)).attr('r',6).attr('fill','transparent');
-  addTip(dots.selectAll('circle'), d=>`${d.value} L`);
+function renderDevice(sid){
+  const d=MODEL.devices.find(x=>x.sensorId===sid); if(!d){ setView('overview'); return; }
+  document.getElementById('tb-title').textContent=d.name;
+  document.getElementById('tb-sub').textContent=`${d.sensorId} · trailing ${labelH(HOURS)}`;
+  const badge=d.state==='red'?'badge-alert':d.state==='amber'?'badge-warn':d.state==='off'?'badge-off':'badge-ok';
+  const btxt=d.state==='red'?'Alert':d.state==='amber'?'Warning':d.state==='off'?'Offline':'OK';
+  const seen=d.latest?minsAgo(d.latest.t):'no data';
+  const tiles=d.params.map(p=>{ const sc=p.state==='red'?' s-red':p.state==='amber'?' s-amber':''; const dot=p.state!=='ok'?`<span class="rdot ${p.state==='red'?'red':'amber'}"></span>`:'';
+    return `<div class="val-tile${sc}"><div class="vl">${dot}${esc(p.label)}</div><div class="vv">${p.lv==null?'—':fmt(p.lv)}${p.unit?` <small>${esc(p.unit)}</small>`:''}</div></div>`; }).join('');
+  const c=document.getElementById('content');
+  c.innerHTML=`
+    <div class="dev-hero"><div class="dh-ic"><svg viewBox="0 0 24 24" fill="none" stroke="var(--teal-light)" stroke-width="2"><rect x="4" y="4" width="16" height="16" rx="3"/><path d="M9 9h6v6H9z" fill="var(--teal-light)" stroke="none"/></svg></div>
+      <div><div class="dh-name">${esc(d.name)}</div><div class="dh-sub">${esc(d.sensorId)} · last seen ${seen}</div></div><span class="badge ${badge}">${btxt}</span></div>
+    <div class="val-row">${tiles}</div>
+    <div class="section-title">Trends</div>
+    <div class="charts-grid" id="dev-charts"></div>`;
+  const wrap=document.getElementById('dev-charts');
+  const chartParams=d.params.filter(p=>p.chart!=='value'&&p.pts.length);
+  if(!chartParams.length){ wrap.innerHTML='<div class="empty">No chartable readings in this range yet.</div>'; return; }
+  chartParams.forEach(p=>{ const g={key:'dev:'+d.sensorId+':'+p.key,label:p.label,unit:p.unit,series:[{name:d.name,color:d.color,pts:p.pts,thresholds:p.thresholds,unit:p.unit}],hidden:new Set()}; wrap.appendChild(chartCard(g)); });
 }
 
-function drawWeightGauge(){
-  const container=document.getElementById('weight-gauge'); container.innerHTML='';
-  const size=180, r=72, thick=16;
-  const val=last(DEVICES['loadcell']).Weight_Reading, max=246000;
-  const pct=Math.min(1,val/max);
-  const svg=d3.select(container).append('svg').attr('width',size).attr('height',size*0.72);
-  const g=svg.append('g').attr('transform',`translate(${size/2},${size*0.62})`);
-  const arc=d3.arc().innerRadius(r-thick).outerRadius(r).startAngle(-Math.PI/2).cornerRadius(3);
-  g.append('path').attr('d',arc.endAngle(Math.PI/2)()).attr('fill','#edf2f7');
-  g.append('path').attr('d',arc.endAngle(-Math.PI/2 + Math.PI*pct)()).attr('fill','#0e9f8e');
-  g.append('text').attr('text-anchor','middle').attr('y',-6).attr('font-size','26').attr('font-weight','600').attr('font-family','IBM Plex Mono').attr('fill','#1a202c').text((val/1000).toFixed(0)+'k');
-  g.append('text').attr('text-anchor','middle').attr('y',12).attr('font-size','11').attr('fill','#718096').text('kg · of 246k');
-  g.append('text').attr('x',-r+4).attr('y',18).attr('font-size','10').attr('fill','#a0aec0').attr('font-family','IBM Plex Mono').text('0');
-  g.append('text').attr('x',r-16).attr('y',18).attr('font-size','10').attr('fill','#a0aec0').attr('font-family','IBM Plex Mono').text('246k');
+/* chart card */
+let CHART_SEQ=0;
+function chartCard(g){
+  const id='c'+(CHART_SEQ++); CHARTS[id]=g;
+  const card=document.createElement('div'); card.className='chart-card';
+  const hint=g.series.length>1?' · <span style="color:var(--teal)">click a name to show/hide</span>':'';
+  card.innerHTML=`<div class="chart-head"><div><div class="chart-title">${esc(g.label)}${g.unit?` <span style="color:var(--text-soft);font-weight:400">(${esc(g.unit)})</span>`:''}</div>
+      <div class="chart-sub">${g.series.length} sensor${g.series.length>1?'s':''} · trailing ${labelH(HOURS)}${hint}</div></div>
+      <button class="ic-btn" onclick="expand('${id}')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/></svg>Expand</button></div>
+    <div class="legend" id="lg-${id}">${legendHtml(g,id)}</div><div class="chart-area" id="ca-${id}"></div>`;
+  requestAnimationFrame(()=>drawChart(document.getElementById('ca-'+id),g,190));
+  return card;
+}
+function legendHtml(g,id){ if(g.series.length<2) return ''; return g.series.map((s,si)=>{ const off=g.hidden.has(s.name); return `<span class="legend-item${off?' off':''}" onclick="toggleSeries('${id}',${si})"><span class="legend-dot" style="background:${off?'#4a5f78':s.color}"></span>${esc(s.name)}</span>`; }).join(''); }
+function toggleSeries(id,si){ const g=CHARTS[id]; if(!g) return; const nm=g.series[si].name; if(g.hidden.has(nm))g.hidden.delete(nm); else g.hidden.add(nm); if(HIDDEN[g.key])HIDDEN[g.key]=g.hidden;
+  drawChart(document.getElementById('ca-'+id),g,190); const lg=document.getElementById('lg-'+id); if(lg) lg.innerHTML=legendHtml(g,id);
+  if(EXPANDED===id){ document.getElementById('expand-legend').innerHTML=legendHtml(g,id); drawChart(document.getElementById('expand-area'),g,440); } }
+
+function drawChart(el,group,height){
+  if(!el) return; el.innerHTML='';
+  const series=group.series.filter(s=>!group.hidden.has(s.name));
+  if(!series.length){ el.innerHTML='<div style="font-size:12px;color:var(--text-soft);padding:26px 0;text-align:center">All sensors hidden — click a name to show one.</div>'; return; }
+  const allPts=series.flatMap(s=>s.pts);
+  if(allPts.length<2){ el.innerHTML='<div style="font-size:12px;color:var(--text-soft);padding:26px 0;text-align:center">Awaiting more readings — trends build up over time.</div>'; return; }
+  const w=el.clientWidth||440,h=height,m={t:10,r:14,b:22,l:44};
+  const x=d3.scaleTime().domain(d3.extent(allPts,d=>d.t)).range([m.l,w-m.r]);
+  const ext=d3.extent(allPts,d=>d.v); const pad=(ext[1]-ext[0])*0.12||Math.abs(ext[0]*0.1)||1;
+  const y=d3.scaleLinear().domain([ext[0]-pad,ext[1]+pad]).nice().range([h-m.b,m.t]);
+  const svg=d3.select(el).append('svg').attr('viewBox',`0 0 ${w} ${h}`);
+  svg.append('g').attr('class','grid').selectAll('line').data(y.ticks(4)).enter().append('line').attr('x1',m.l).attr('x2',w-m.r).attr('y1',d=>y(d)).attr('y2',d=>y(d));
+  svg.append('g').attr('class','axis').attr('transform',`translate(0,${h-m.b})`).call(d3.axisBottom(x).ticks(w>640?7:4).tickSizeOuter(0).tickFormat(d3.timeFormat(HOURS<=24?'%H:%M':'%d %b')));
+  svg.append('g').attr('class','axis').attr('transform',`translate(${m.l},0)`).call(d3.axisLeft(y).ticks(4).tickSizeOuter(0));
+  if(series.length===1&&series[0].thresholds){ const th=series[0].thresholds;
+    [['redAbove','var(--alert)'],['redBelow','var(--alert)'],['amberAbove','var(--warn)'],['amberBelow','var(--warn)']].forEach(([k,cl])=>{ if(th[k]!=null&&th[k]>=ext[0]-pad&&th[k]<=ext[1]+pad) svg.append('line').attr('class','thline').attr('x1',m.l).attr('x2',w-m.r).attr('y1',y(th[k])).attr('y2',y(th[k])).attr('stroke',cl); }); }
+  const line=d3.line().x(d=>x(d.t)).y(d=>y(d.v)).curve(d3.curveMonotoneX);
+  series.forEach(s=>{ const gid='gr'+Math.abs(hashStr(group.key+s.name))%99999;
+    const grad=svg.append('defs').append('linearGradient').attr('id',gid).attr('x1',0).attr('y1',0).attr('x2',0).attr('y2',1);
+    grad.append('stop').attr('offset','0%').attr('stop-color',s.color).attr('stop-opacity',series.length===1?0.28:0.14);
+    grad.append('stop').attr('offset','100%').attr('stop-color',s.color).attr('stop-opacity',0);
+    if(series.length===1){ const area=d3.area().x(d=>x(d.t)).y0(h-m.b).y1(d=>y(d.v)).curve(d3.curveMonotoneX); svg.append('path').datum(s.pts).attr('d',area).attr('fill',`url(#${gid})`); }
+    svg.append('path').datum(s.pts).attr('fill','none').attr('stroke',s.color).attr('stroke-width',1.9).attr('d',line);
+    const last=s.pts[s.pts.length-1]; svg.append('circle').attr('cx',x(last.t)).attr('cy',y(last.v)).attr('r',2.6).attr('fill',s.color);
+  });
+  const cross=svg.append('line').attr('class','crosshair').attr('y1',m.t).attr('y2',h-m.b);
+  const tip=document.getElementById('tooltip'); const bis=d3.bisector(d=>d.t).left;
+  svg.append('rect').attr('x',m.l).attr('y',m.t).attr('width',Math.max(1,w-m.r-m.l)).attr('height',Math.max(1,h-m.b-m.t)).attr('fill','transparent')
+    .on('mousemove',function(ev){ const mx=d3.pointer(ev,this)[0]; const t=x.invert(mx); cross.attr('x1',mx).attr('x2',mx).style('opacity',1);
+      let rows=''; series.forEach(s=>{ let i=bis(s.pts,t); i=Math.max(0,Math.min(s.pts.length-1,i)); const a=s.pts[i-1],b=s.pts[i]; const d=(!a||(b&&(t-a.t)>(b.t-t)))?b:a;
+        if(d) rows+=`<div class="tt-row"><span class="tt-nm"><span class="tt-dot" style="background:${s.color}"></span>${esc(s.name)}</span><span>${fmt(d.v)}${group.unit?esc(group.unit):''}</span></div>`; });
+      tip.innerHTML=`<div class="tt-time">${d3.timeFormat('%d %b · %H:%M')(t)}</div>${rows}`; tip.style.opacity=1; tip.style.left=Math.min(ev.clientX+14,window.innerWidth-200)+'px'; tip.style.top=(ev.clientY-10)+'px'; })
+    .on('mouseleave',()=>{ cross.style('opacity',0); tip.style.opacity=0; });
+}
+function hashStr(s){ let h=0; for(let i=0;i<s.length;i++){ h=(h<<5)-h+s.charCodeAt(i); h|=0; } return h; }
+
+function expand(id){ const g=CHARTS[id]; if(!g) return; EXPANDED=id;
+  document.getElementById('expand-title').textContent=g.label+(g.unit?` (${g.unit})`:'');
+  document.getElementById('expand-sub').textContent=`${g.series.length} sensor${g.series.length>1?'s':''} · trailing ${labelH(HOURS)}`;
+  document.getElementById('expand-legend').innerHTML=legendHtml(g,id);
+  document.getElementById('expand-scrim').classList.add('show'); drawChart(document.getElementById('expand-area'),g,440); }
+function closeExpand(){ EXPANDED=null; document.getElementById('expand-scrim').classList.remove('show'); document.getElementById('expand-area').innerHTML=''; }
+
+/* PDF */
+function openPdf(){ const to=new Date(),from=new Date(Date.now()-7*864e5);
+  document.getElementById('pdf-from').value=from.toISOString().slice(0,10); document.getElementById('pdf-to').value=to.toISOString().slice(0,10);
+  document.getElementById('pdf-title').value=(CONFIG&&CONFIG.title||TENANT.name)+' — Sensor Report';
+  document.getElementById('pdf-sensor-list').innerHTML=MODEL.devices.map(d=>`<label class="pdf-chk"><input type="checkbox" value="${esc(d.sensorId)}" checked>${esc(d.name)} <span class="mono">${esc(d.sensorId)}</span></label>`).join('') || '<div style="color:var(--text-soft);font-size:12px;padding:6px">No devices.</div>';
+  document.getElementById('pdf-scrim').classList.add('show'); }
+function pdfSelectAll(on){ document.querySelectorAll('#pdf-sensor-list input').forEach(cb=>cb.checked=on); }
+function closePdf(){ document.getElementById('pdf-scrim').classList.remove('show'); }
+function generateReport(){
+  const title=document.getElementById('pdf-title').value||'Sensor Report', from=document.getElementById('pdf-from').value, to=document.getElementById('pdf-to').value, notes=document.getElementById('pdf-notes').value;
+  const fromT=from?new Date(from+'T00:00:00'):new Date(0), toT=to?new Date(to+'T23:59:59'):new Date();
+  const sel=new Set(Array.from(document.querySelectorAll('#pdf-sensor-list input:checked')).map(x=>x.value));
+  let devHtml='';
+  MODEL.devices.forEach(d=>{
+    if(!sel.has(d.sensorId)) return;
+    const rd=(RAW[d.sensorId]||[]).map(r=>({t:new Date(r.time),p:r.payload||{}})).filter(r=>r.t>=fromT&&r.t<=toT);
+    let rows='';
+    d.params.forEach(p=>{ const vals=rd.map(r=>num(r.p[p.key])).filter(v=>v!=null); if(!vals.length){ rows+=`<tr><td>${esc(p.label)}</td><td colspan="4" style="color:#888">no data</td></tr>`; return; }
+      const last=vals[vals.length-1],min=Math.min(...vals),max=Math.max(...vals),avg=vals.reduce((a,b)=>a+b,0)/vals.length; const st=evalTh(last,p.thresholds);
+      rows+=`<tr><td>${esc(p.label)} ${p.unit?`<span class="u">${esc(p.unit)}</span>`:''}</td><td>${fmt(last)}</td><td>${fmt(min)}</td><td>${fmt(max)}</td><td>${fmt(avg)}</td><td class="st-${st}">${st==='red'?'ALERT':st==='amber'?'Warning':'OK'}</td></tr>`; });
+    if(rows) devHtml+=`<h3>${esc(d.name)} <span class="sid">${esc(d.sensorId)}</span></h3><table class="rt"><thead><tr><th>Reading</th><th>Latest</th><th>Min</th><th>Max</th><th>Avg</th><th>Status</th></tr></thead><tbody>${rows}</tbody></table>`;
+  });
+  const w=window.open('','_blank'); if(!w){ alert('Allow pop-ups to generate the report.'); return; }
+  w.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>${esc(title)}</title>
+    <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <style>*{box-sizing:border-box;margin:0;padding:0}body{font-family:'IBM Plex Sans',sans-serif;color:#1a202c;padding:34px 40px}
+    .rhead{display:flex;justify-content:space-between;align-items:flex-end;border-bottom:3px solid #16c8b4;padding-bottom:16px;margin-bottom:22px}
+    .rbrand{font-size:20px;font-weight:700;color:#0a2540}.rbrand .s{display:block;font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:#0e9f8e;font-weight:600}
+    .rmeta{text-align:right;font-size:12px;color:#4a5568;line-height:1.6}.rtitle{font-size:16px;font-weight:600;margin:0 0 4px}
+    .notes{background:#f7fafc;border:1px solid #e2e8f0;border-radius:8px;padding:11px 14px;font-size:12.5px;color:#4a5568;margin-bottom:22px}
+    h3{font-size:14px;margin:20px 0 8px;color:#0a2540}h3 .sid{font-family:'IBM Plex Mono',monospace;font-size:11px;color:#718096;font-weight:400}
+    table.rt{width:100%;border-collapse:collapse;font-size:12px}table.rt th{background:#f7fafc;text-align:left;padding:7px 10px;border:1px solid #e2e8f0;font-size:10px;text-transform:uppercase;color:#718096}
+    table.rt td{padding:7px 10px;border:1px solid #e2e8f0;font-family:'IBM Plex Mono',monospace}table.rt td:first-child{font-family:'IBM Plex Sans',sans-serif}.u{color:#718096;font-size:10px}
+    .st-ok{color:#2f9e5f;font-weight:600}.st-amber{color:#b7791f;font-weight:600}.st-red{color:#e2483d;font-weight:700}
+    .rfoot{margin-top:26px;border-top:1px solid #e2e8f0;padding-top:12px;font-size:10.5px;color:#a0aec0;display:flex;justify-content:space-between}
+    @media print{body{padding:14mm}.noprint{display:none}}.noprint{position:fixed;top:14px;right:16px}.pbtn{background:#0a2540;color:#fff;border:none;border-radius:8px;padding:9px 16px;font-family:inherit;font-size:13px;font-weight:600;cursor:pointer}</style></head><body>
+    <div class="noprint"><button class="pbtn" onclick="window.print()">Save as PDF ⭳</button></div>
+    <div class="rhead"><div class="rbrand">Atlantic Energy<span class="s">Sensor Report</span></div>
+    <div class="rmeta"><div class="rtitle">${esc(title)}</div>Client: ${esc(TENANT.name)} (${esc(TENANT.id)})<br>Period: ${esc(from||'—')} → ${esc(to||'—')}<br>Generated: ${new Date().toLocaleString('en-IE')}</div></div>
+    ${notes?`<div class="notes"><strong>Notes:</strong> ${esc(notes)}</div>`:''}
+    ${devHtml||'<p style="color:#888">No data in the selected period.</p>'}
+    <div class="rfoot"><span>Atlantic Energy Sensor Platform · LoRaWAN → The Things Network → Azure</span><span>Confidential · ${esc(TENANT.id)}</span></div></body></html>`);
+  w.document.close(); closePdf();
 }
 
-/* ── init ── */
-function drawAllCharts(){ drawTHChart(); drawEnergyChart(); drawWaterChart(); drawWeightGauge(); }
-/* ── render everything ── */
-function renderAll(){
-  buildFilters(); renderKPIs(); renderAlerts(); renderMiniStatus(); renderFullStatus(); renderBatteries(); drawAllCharts();
-}
-
-/* ── load live data from the Azure Function, fall back to snapshot ── */
-async function loadLive(){
-  try {
-    const res = await fetch(API_URL, { cache:'no-store' });
-    if (!res.ok) throw new Error('HTTP '+res.status);
-    const json = await res.json();
-    const devs = json.devices || {};
-    const built = {};
-    let anyData = false;
-
-    Object.keys(DEVICE_META).forEach(id=>{
-      const meta = DEVICE_META[id];
-      const raw = (devs[id]||[])
-        .map(r=>{ const p = normalise(r.payload); return p ? Object.assign({ time:new Date(r.time) }, p) : null; })
-        .filter(Boolean)
-        .sort((a,b)=>a.time-b.time);
-      built[id] = { type:meta.type, kind:meta.kind, data: raw };
-      if (raw.length) anyData = true;
-    });
-
-    if (!anyData) throw new Error('no decoded readings returned');
-
-    // only replace devices that actually returned data; keep snapshot for any empty ones
-    Object.keys(built).forEach(id=>{ if (built[id].data.length) DEVICES[id] = built[id]; });
-
-    // recompute last-seen (mins ago) from the newest reading per device
-    const now = Date.now();
-    Object.keys(DEVICES).forEach(id=>{
-      const d = DEVICES[id].data;
-      if (d.length) LAST_SEEN[id] = Math.max(0, Math.round((now - d[d.length-1].time.getTime())/60000));
-    });
-
-    document.getElementById('src-tag').textContent = 'Live · Azure';
-  } catch(e){
-    // silent fallback — dashboard already holds the snapshot
-    document.getElementById('src-tag').textContent = 'Live';
-    console.warn('Live fetch failed, using snapshot:', e.message);
-  }
-  renderAll();
-}
-
-loadLive();
-window.addEventListener('resize', ()=>{ clearTimeout(window._rz); window._rz=setTimeout(drawAllCharts,200); });
+/* helpers */
+function flatten(p){ const o={}; for(const k in p){ const v=p[k]; if(v&&typeof v==='object'&&!Array.isArray(v)){ for(const c in v) o[c]=v[c]; } else o[k]=v; } return o; }
+function fmt(v){ if(v==null) return '—'; if(typeof v!=='number') return String(v); return Math.abs(v)>=1000?v.toLocaleString('en-IE',{maximumFractionDigits:1}):(Number.isInteger(v)?v:v.toFixed(2)); }
+function prettify(k){ return k.replace(/_/g,' ').replace(/([a-z])([A-Z])/g,'$1 $2').replace(/\b\w/g,c=>c.toUpperCase()); }
+function minsAgo(t){ const m=Math.round((Date.now()-t.getTime())/60000); if(m<1) return 'just now'; if(m<60) return m+' min ago'; const h=Math.round(m/60); return h<24?h+' h ago':Math.round(h/24)+' d ago'; }
+function labelH(h){ return h>=720?'30 days':h>=168?'7 days':h+'h'; }
+window.addEventListener('resize',()=>{ if(TOKEN&&MODEL.devices.length) renderMain(); });
 </script>
 </body>
 </html>
